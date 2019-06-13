@@ -1,14 +1,30 @@
+#!/usr/bin/env python3
+
+#
+# [genetic.py]
+#
+# Genetic algorithm optimizer library.
+# Copyright (C) 2019, Liam Schumm.
+#
+
 import os
-import numpy
-np = numpy
 import math
 import random
+import numpy as np
 
 rand = lambda: random.random() * 2 - 1
 
 from utils import *
 
-shapes = [(3,2), (3,3), (3,3), (1,3)]
+def pair(population, pair_pct=1):
+
+    population = population[:int(len(population) * pair_pct)]
+
+    if len(population) % 2 != 0:
+        population = population[:-1]
+
+    for i in range(0, len(population), 2):
+        yield (population[i], population[i + 1])
 
 def mksquare(arr, n):
     mat = []
@@ -17,7 +33,6 @@ def mksquare(arr, n):
     return mat
 
 def dot(weights, vals):
-
     if len(weights) != len(vals):
         raise Exception()
 
