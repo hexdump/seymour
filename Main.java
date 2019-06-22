@@ -7,46 +7,20 @@ class Main {
     public static void main(String args[]) {
 	Population p = new Population();
 
-	p.breed();
-	p.sort();
-	p.select();
-
-	p.breed();
-	p.sort();
-	p.select();
-
-	p.breed();
-	p.sort();
-	p.select();
-
-
-	p.breed();
-	p.sort();
-	p.select();
-
-
-	p.breed();
-	p.sort();
-	p.select();
-
-	p.sort();
-	
-	System.out.println("helo!");
-	System.out.println(p.individuals.get(0).genome[0]);
-	System.out.println(p.individuals.get(0).genome[1]);
-	System.out.println(p.individuals.get(0).genome[2]);
-	System.out.println(p.individuals.get(0).genome[0] + p.individuals.get(0).genome[1] + p.individuals.get(0).genome[2]);
-
-	
-    }
+	for (int i = 0; i < %{NUM_ROUNDS}; i++) {
+	    p.breed();
+	    p.sort();
+	    p.select();
+	}
 }
 
 class Randomizer {
     private Random rand = new Random();
     
     public double sampleNormal(double mean, double sd) {
+	// TODO: customize standard deviation to allow for convergence
+	// calling format: .nextGaussian(mean, stddev)
 	return rand.nextGaussian();
-	//	return rand.nextGaussian(mean, 0.1);
     }
 
     public double[] mutateGenome(double[] genome) {
@@ -58,7 +32,7 @@ class Randomizer {
     }
 }
 
-class Individual implements Comparable<Individual>{
+class Individual implements Comparable<Individual> {
     public double[] genome;
     private Randomizer rand = new Randomizer();
 
@@ -70,10 +44,6 @@ class Individual implements Comparable<Individual>{
     public Individual() {
 	this(new double[] {0, 0, 0});
     }
-
-    // public toString() {
-    // }
-    
     
     public Individual asexuallyReproduce() {
 	return new Individual(rand.mutateGenome(this.genome));
@@ -92,7 +62,7 @@ class Individual implements Comparable<Individual>{
     }
 
     public double evaluate() {
-	return Math.abs(4 - (genome[0] + genome[1] + genome[2]));
+	return %{EVALUATION};
     }
     
     @Override
@@ -114,8 +84,9 @@ class Population {
     
     public Population() {
 	this.individuals = new ArrayList<Individual>();
-	this.individuals.add(new Individual());
-	this.individuals.add(new Individual());
+	for (int i = 0; i < %{NUM_INDIVIDUALS}; i++) {
+	    this.individuals.add(new Individual());
+	}
     }
 
     public void sort() {
@@ -136,7 +107,4 @@ class Population {
 	    this.individuals.remove(i);
 	}
     }
-
-    //public void select() {
-    //}
 }
