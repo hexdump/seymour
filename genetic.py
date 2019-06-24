@@ -39,9 +39,6 @@ def dot(weights, vals):
     for i in range(len(weights)):
         weights[i] * vals[i]
 
-def deviate(x, err):
-    return numpy.random.normal(x, 0.5 * (err ** 0.1))
-
 def _error(v1, v2):
     if v1 == v2:
         return 0

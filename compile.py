@@ -2,10 +2,6 @@ import numpy as np
 from sympy import Symbol, Matrix
 from sympy.matrices import Transpose
 
-# %{NUM_ROUNDS}
-# %{NUM_INDIVIDUALS}
-# %{EVALUATION}
-
 def gen_matrix(y, x, i0=0):
 
     num_symbols = x * y
@@ -79,9 +75,12 @@ class Model(object):
             for i in range(no):
                 final += rpd(est[i], output[i])
 
-        print(final)
-            
         built = True
+
+        return {'GENOME_SIZE': str(offset),
+                'NUM_ROUNDS': '5',
+                'NUM_INDIVIDUALS': '1000',
+                'EVALUATION': str(final)}
 
     def evaluate(self, input):
         if not built:
@@ -103,4 +102,13 @@ outputs = [
 ]
 
 m = Model(inputs, outputs)
-m.build()
+out = m.build()
+
+with open('Template.java') as f:
+    text = f.read()
+    for var in out:
+        text = text.replace('%{' + var + '}', out[var])
+    text = text.replace('Abs', 'Math.abs')
+
+    with open('Out.java', 'w') as f_o:
+        f_o.write(text)
