@@ -3,7 +3,11 @@ import numpy as np
 import algorithm as alg
 
 def sig(x):
-    return 1 / (1 + math.exp(-x))
+    try:
+        e = math.exp(-x)
+    except OverflowError:
+        e = float('inf')
+    return 1 / (1 + e)
 
 def sig_vec(v):
     out = np.zeros((len(v), 1))
@@ -18,6 +22,9 @@ def rpd(est, act):
     else:
         return 2 * (est - act) / (abs(est) + abs(act))
 
+def se(est, act):
+    return (act - est) ** 2
+
 class Network(alg.Individual):
 
     def __init__(self, inputs, outputs, nl=5, genome=None):
@@ -31,59 +38,68 @@ class Network(alg.Individual):
         self.no = len(outputs[0])
         self.nl = nl
         self.genome = genome
-        self.genome_size = self.ni * self.ni * self.nl + self.ni * self.no
+        self.genome_size = (self.ni * self.ni + self.ni) * self.nl + self.ni * self.no
 
         super().__init__()
 
     def reproduce(self, genome):
-        return Network(self.inputs, self.outputs, self.nl, self.genome)
+        return Network(self.inputs, self.outputs, self.nl, genome)
 
     def evaluate(self, inp):
 
-        d = self.ni * self.ni
-        matrices = []
+        idx = 0
+        layers = []
+        
+        for i in range(0, self.nl):
+            coef = self.genome[idx: idx + self.ni * self.ni]
+            coef = np.reshape(coef, (self.ni, self.ni))
+            idx += self.ni * self.ni
+            bias = self.genome[idx: idx + self.ni]
+            bias = np.reshape(bias, (self.ni, 1))
+            idx += self.ni
+            layers.append((coef, bias))
+        
+        trans = self.genome[idx: idx + self.ni * self.no]
+        idx += self.ni * self.no
+        trans = np.reshape(trans, (self.no, self.ni))
 
-        for i in range(0, d * self.nl, d):
-            matrices.append(np.reshape(self.genome[i : i + d], (self.ni, self.ni)))
-
-        matrices.append(np.reshape(self.genome[d * self.nl : d * self.nl + self.ni * self.no], (self.no, self.ni)))
-
-
-        for matrix in matrices[:-1]:
+        for (coef, bias) in layers:
+            inp = sig_vec(np.matmul(coef, inp) + bias)
             
-            inp = np.matmul(matrix, inp)
-
-            inp = np.reshape(sig_vec(inp), (self.ni, 1))
-
-        inp = np.matmul(matrices[-1], inp)
-        inp = np.reshape(sig_vec(inp), (self.no, 1))
-
-        return inp
+        return sig_vec(np.matmul(trans, inp))
 
     def fitness_function(self):
         score = 0
         for (input, output) in zip(self.inputs, self.outputs):
-            exp = self.evaluate(np.asmatrix(input).reshape(len(input), 1))
+            exp = self.evaluate(input)
             act = output
 
-            score += sum(map(rpd, exp, act))
+            score += abs(sum(map(se, exp, act)))
         return score
 
+def columnize(item):
+    return np.asmatrix(item).reshape(len(item), 1)
 
-inputs = [
+def columnize_list(list):
+    return [columnize(x) for x in list]
+
+inputs = columnize_list([
     [0, 0],
     [0, 1],
     [1, 0],
     [1, 1]
-]
+])
 
-outputs = [
+outputs = columnize_list([
     [0],
     [1],
     [1],
     [0]
-]
+])
 
-gt = alg.GeneticTrainer(Network, (inputs, outputs))
+gt = alg.GeneticTrainer(Network, (inputs, outputs, 3))
 
-print(gt.train(200).genome)
+s = gt.train(100)
+
+for input in inputs:
+    print(s.evaluate(input))
