@@ -15,7 +15,6 @@ SD_ERR_COEFF = 0.05
 deviate = np.random.normal
 
 def mutate_genome(genome, err):
-    print(err)
     return [deviate(x, SD_ERR_COEFF * abs(err ** 2)) for x in genome]
 
 def mix_genomes(l1, l2):
@@ -24,39 +23,30 @@ def mix_genomes(l1, l2):
             for i in range(len(l1))]
 
 class Individual(object):
-    def __init__(self, fitness_function, genome_size, genome=None):
-        if genome is None:
-            self.genome = [deviate(0, 1) for _ in range(genome_size)]
-        else:
-            self.genome = genome
-        self.fitness = fitness_function(self.genome)
-        self.fitness_function = fitness_function
-        self.genome_size = genome_size
-        assert self.genome_size == len(self.genome)
+    genome = None
+    def __init__(self):
+        if self.genome is None:
+            self.genome = [deviate(0, 1) for _ in range(self.genome_size)]
+        self.fitness = self.fitness_function()
 
+        
     def sexually_reproduce(self, mate):
         assert len(self.genome) == len(mate.genome)
-        [c1, c2, c3, c4] = [Individual(self.fitness_function,
-                                       self.genome_size,
-                                       mutate_genome(
-                                           mix_genomes(self.genome,
-                                                       mate.genome),
+        [c1, c2, c3, c4] = [self.reproduce(mutate_genome(mix_genomes(
+            self.genome,
+            mate.genome),
                                            self.fitness/2 + mate.fitness/2))
                             for _ in range(4)]
         return [c1, c2, c3, c4]
         
     def asexually_reproduce(self):
-        return [Individual(self.fitness_function,
-                           self.genome_size,
-                           mutate_genome(self.genome, self.fitness))
+        return [self.reproduce(mutate_genome(self.genome, self.fitness))
                 for _ in range(2)]
 
 class Population(object):
-    def __init__(self, fitness_function, genome_size):
-        self.fitness_function = fitness_function
-        self.genome_size = genome_size
+    def __init__(self, member_class=Individual, init_args=()):
         self.population_size = 1000
-        self.population = [Individual(fitness_function, genome_size)
+        self.population = [member_class(*init_args)
                            for _ in range(self.population_size)]
         
     def sort(self):
@@ -74,19 +64,15 @@ class Population(object):
         return self.population[0]
 
 class GeneticTrainer(object):
-    def __init__(self, fitness_function, genome_size):
-        self.population = Population(fitness_function, genome_size)
+    def __init__(self, member_class, init_args):
+        self.population = Population(member_class, init_args)
 
     def train(self, iterations):
         for i in range(iterations):
-            if i % 100 == 0:
-                print(i)
+            #if i % 10 == 0:
+            #    print(i)
+            print(i)
+            print(self.population.best_individual().fitness)
             self.population.asexually_breed()
 
         return self.population.best_individual()
-
-def fitness(genome):
-    return 4 - sum(genome)
-
-gt = GeneticTrainer(fitness, 1)
-print(gt.train(200).genome)

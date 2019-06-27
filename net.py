@@ -1,14 +1,6 @@
 import math
 import numpy as np
-# class Network(object):
-
-#     def __init__(self, ni, no, nl):
-#         self.ni = ni
-#         self.no = no
-#         self.nl = nl
-#         self.genome = np.random.randn(n)
-
-#     def evaluate()
+import algorithm as alg
 
 def sig(x):
     return 1 / (1 + math.exp(-x))
@@ -18,38 +10,80 @@ def sig_vec(v):
     for i, val in enumerate(v):
         out[i, 0] = sig(val[0])
     return np.asarray(out)
+
+def rpd(est, act):
+    # relative percent difference
+    if est == act:
+        return 0
+    else:
+        return 2 * (est - act) / (abs(est) + abs(act))
+
+class Network(alg.Individual):
+
+    def __init__(self, inputs, outputs, nl=5, genome=None):
+        # self.inputs = np.asmatrix(inputs)
+        # self.outputs = np.asmatrix(outputs)
+
+        self.inputs = inputs
+        self.outputs = outputs
         
-def evaluate(genome, inp, ni, nl, no):
+        self.ni = len(inputs[0])
+        self.no = len(outputs[0])
+        self.nl = nl
+        self.genome = genome
+        self.genome_size = self.ni * self.ni * self.nl + self.ni * self.no
 
-    d = ni * ni
-    matrices = []
+        super().__init__()
 
-    for i in range(0, d * nl, d):
-        matrices.append(np.reshape(genome[i : i + d], (ni, ni)))
+    def reproduce(self, genome):
+        return Network(self.inputs, self.outputs, self.nl, self.genome)
 
-    matrices.append(np.reshape(genome[d * nl : d * nl + ni * no], (no, ni)))
+    def evaluate(self, inp):
 
-    for matrix in matrices[:-1]:
+        d = self.ni * self.ni
+        matrices = []
 
-        inp = np.matmul(matrix, inp)
+        for i in range(0, d * self.nl, d):
+            matrices.append(np.reshape(self.genome[i : i + d], (self.ni, self.ni)))
 
-        # pr
-        # print(np)
-        
-        inp = np.reshape(sig_vec(inp), (ni, 1))
-
-    inp = np.matmul(matrices[-1], inp)
-    inp = np.reshape(sig_vec(inp), (no, 1))
-
-    return inp
+        matrices.append(np.reshape(self.genome[d * self.nl : d * self.nl + self.ni * self.no], (self.no, self.ni)))
 
 
-ni = 2
-no = 1
-nl = 3
+        for matrix in matrices[:-1]:
+            
+            inp = np.matmul(matrix, inp)
 
-genome = np.random.randn(ni * ni * nl + ni * no)
+            inp = np.reshape(sig_vec(inp), (self.ni, 1))
 
-i = np.array([[1], [3]])
+        inp = np.matmul(matrices[-1], inp)
+        inp = np.reshape(sig_vec(inp), (self.no, 1))
 
-# print(evaluate(genome, i, ni, nl, no))
+        return inp
+
+    def fitness_function(self):
+        score = 0
+        for (input, output) in zip(self.inputs, self.outputs):
+            exp = self.evaluate(np.asmatrix(input).reshape(len(input), 1))
+            act = output
+
+            score += sum(map(rpd, exp, act))
+        return score
+
+
+inputs = [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1]
+]
+
+outputs = [
+    [0],
+    [1],
+    [1],
+    [0]
+]
+
+gt = alg.GeneticTrainer(Network, (inputs, outputs))
+
+print(gt.train(200).genome)
