@@ -1,33 +1,72 @@
 # seymour
 
+*Feed me training data, Seymour!*
+
 A genetic algorithm solver library, primarily used for the solving of fixed-size deep neural nets.
 
 ## Genetic Algorithm How-To
 
-In order to create a genetic optimizer, you'll first need a fitness function. Each individual in a Seymour instance will have an arbitrarily long list of floating-point numbers to represent its "genome"; thus the fitness function will take in a list of floating point numbers and return a fitness value (with `0` being most fit and large negative and positive numbers being least).
+Genetic algorithms are handled as large sets of objects. These objects are defined by the user, so all of the objects simulated can also be evaluated in whatever application is being optimized.
 
-For this example, we'll be optimizing a `n=4` genome so the individual components will sum to `4`. Here's the fitness function for this problem:
+In this example, we'll be definining a neural network object that can be optimized over a population. Key things to note about this example are:
 
-```
-def fitness(genome):
-    return 4 - sum(genome)
-```
+- Definition of a `reproduce` function
+- Definition of `fitness_function`
 
-After we've defined our fitness function, we'll initialize a `GeneticTrainer` object with our fitness function and our genome size (`4`):
+Without these components, an `Individual` object will not function.
 
 ```
-gt = GeneticTrainer(fitness, 4)
-```
+import seymour as sy
 
-Then, let's train it and get the most fit individual after `200` rounds:
+class Network(sy.ga.Individual):
 
-```
-best_individual = gt.train(200)
-```
+    def __init__(self, inputs, outputs, nl=5, genome=None):
+        # self.inputs = np.asmatrix(inputs)
+        # self.outputs = np.asmatrix(outputs)
 
-And let's take a look at its genome and the sum:
+        self.inputs = inputs
+        self.outputs = outputs
+        
+        self.ni = len(inputs[0])
+        self.no = len(outputs[0])
+        self.nl = nl
+        self.genome = genome
+        self.genome_size = (self.ni * self.ni + self.ni) * self.nl + self.ni * self.no
 
-```
-print(best_individual.genome)
-print(sum(best_individual.genome))
+        super().__init__()
+
+    def reproduce(self, genome):
+        return Network(self.inputs, self.outputs, self.nl, genome)
+
+    def evaluate(self, inp):
+
+        idx = 0
+        layers = []
+        
+        for i in range(0, self.nl):
+            coef = self.genome[idx: idx + self.ni * self.ni]
+            coef = np.reshape(coef, (self.ni, self.ni))
+            idx += self.ni * self.ni
+            bias = self.genome[idx: idx + self.ni]
+            bias = np.reshape(bias, (self.ni, 1))
+            idx += self.ni
+            layers.append((coef, bias))
+        
+        trans = self.genome[idx: idx + self.ni * self.no]
+        idx += self.ni * self.no
+        trans = np.reshape(trans, (self.no, self.ni))
+
+        for (coef, bias) in layers:
+            inp = sig_vec(np.matmul(coef, inp) + bias)
+            
+        return sig_vec(np.matmul(trans, inp))
+
+    def fitness_function(self):
+        score = 0
+        for (input, output) in zip(self.inputs, self.outputs):
+            exp = self.evaluate(input)
+            act = output
+
+            score += abs(sum(map(se, exp, act)))
+        return score
 ```
