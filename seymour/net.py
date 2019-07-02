@@ -1,6 +1,6 @@
 import math
 import numpy as np
-import algorithm as alg
+import ga as ga
 
 def sig(x):
     try:
@@ -25,7 +25,7 @@ def rpd(est, act):
 def se(est, act):
     return (act - est) ** 2
 
-class Network(alg.Individual):
+class Network(ga.Individual):
 
     def __init__(self, inputs, outputs, nl=5, genome=None):
         # self.inputs = np.asmatrix(inputs)
@@ -82,24 +82,3 @@ def columnize(item):
 
 def columnize_list(list):
     return [columnize(x) for x in list]
-
-inputs = columnize_list([
-    [0, 0],
-    [0, 1],
-    [1, 0],
-    [1, 1]
-])
-
-outputs = columnize_list([
-    [0],
-    [1],
-    [1],
-    [0]
-])
-
-gt = alg.GeneticTrainer(Network, (inputs, outputs, 3))
-
-s = gt.train(100)
-
-for input in inputs:
-    print(s.evaluate(input))

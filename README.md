@@ -70,3 +70,30 @@ class Network(sy.ga.Individual):
             score += abs(sum(map(se, exp, act)))
         return score
 ```
+
+## Neural Network How-To
+
+``
+import seymour as sy
+
+inputs = sy.net.columnize_list([
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1]
+])
+
+outputs = sy.net.columnize_list([
+    [0],
+    [1],
+    [1],
+    [0]
+])
+
+gt = sy.alg.GeneticTrainer(sy.net.Network, (inputs, outputs, 3))
+
+s = gt.train(100)
+
+for input in inputs:
+    print(s.evaluate(input))
+```
