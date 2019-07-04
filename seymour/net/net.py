@@ -1,6 +1,6 @@
 import math
 import numpy as np
-import ga as ga
+import seymour.ga as ga
 
 def sig(x):
     try:
