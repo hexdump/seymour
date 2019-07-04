@@ -9,4 +9,5 @@ setup(
     description = "A genetic algorithm solver library, primarily used for the solving of fixed-size deep neural nets.",
     url = "http://github.com/lschumm/seymour",
     packages=['seymour'],
+    install_requires=['numpy'],
 )

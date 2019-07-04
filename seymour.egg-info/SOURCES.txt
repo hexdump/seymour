@@ -1,7 +1,0 @@
-README.md
-setup.py
-seymour/__init__.py
-seymour.egg-info/PKG-INFO
-seymour.egg-info/SOURCES.txt
-seymour.egg-info/dependency_links.txt
-seymour.egg-info/top_level.txt

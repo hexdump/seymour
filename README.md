@@ -74,23 +74,24 @@ class Network(sy.ga.Individual):
 ## Neural Network How-To
 
 ``
-import seymour as sy
+import seymour.net as net
+import seymour.ga as ga
 
-inputs = sy.net.columnize_list([
+inputs = net.columnize_list([
     [0, 0],
     [0, 1],
     [1, 0],
     [1, 1]
 ])
 
-outputs = sy.net.columnize_list([
+outputs = net.columnize_list([
     [0],
     [1],
     [1],
     [0]
 ])
 
-gt = sy.alg.GeneticTrainer(sy.net.Network, (inputs, outputs, 3))
+gt = ga.GeneticTrainer(net.Network, (inputs, outputs, 3))
 
 s = gt.train(100)
 
