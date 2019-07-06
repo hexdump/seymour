@@ -10,8 +10,8 @@
 from random import random
 import numpy as np
 
-SD_ERR_COEFF = 0.5
-CONV_POW = 1
+SD_ERR_COEFF = 0.1
+CONV_POW = 3
 
 def deviate(mean, stddev):
     #if random() > 0.9:

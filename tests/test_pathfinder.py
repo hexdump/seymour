@@ -6,6 +6,8 @@ steps = 10
 target = (random() * 2 * steps - steps,
           random() * 2 * steps - steps)
 
+steps = 10
+
 def pair_coords(genome, dim):
     return [tuple(genome[i:i+dim]) for i in range(0, len(genome), dim)]
 
@@ -51,10 +53,31 @@ class Path(ga.Individual):
         return distance(self.evaluate(), self.target)
 
 gt = ga.GeneticTrainer(Path, (target, steps))
-s = gt.train(600)
+s = gt.train(10)
 
 print(target)
 print(s.evaluate())
     
+import turtle
 
+turtle.speed(0)
 
+turtle.penup()
+turtle.right(90)
+turtle.forward(target[0] * 25)
+turtle.left(90)
+turtle.forward(target[1] * 25)
+turtle.dot(5)
+turtle.goto(0, 0)
+
+for path in gt.population.population[:20]:
+    turtle.pendown()
+    for j in range(0, len(path.genome), 2):
+        turtle.goto(turtle.xcor() + path.genome[j] * 25,
+                    turtle.ycor() + path.genome[j+1] * 25)
+#        turtle.left(90)
+#        turtle.forward(path.genome[j] * 25)
+#        turtle.right(90)
+#        turtle.forward(path.genome[j + 1] * 25)
+    turtle.penup()
+    turtle.goto(0, 0)
