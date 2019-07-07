@@ -50,7 +50,7 @@ class Path(ga.Individual):
         return total
         
     def fitness_function(self):
-        return distance(self.evaluate(), self.target)
+        return distance(self.evaluate(), self.target) / (steps * 2**0.5)
 
 gt = ga.GeneticTrainer(Path, (target, steps))
 s = gt.train(10)
