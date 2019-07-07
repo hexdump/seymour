@@ -73,7 +73,7 @@ class Network(sy.ga.Individual):
 
 ## Neural Network How-To
 
-``
+```
 import seymour.net as net
 import seymour.ga as ga
 
