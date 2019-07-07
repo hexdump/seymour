@@ -88,9 +88,19 @@ class GeneticTrainer(object):
         for i in range(iterations):
             #if i % 10 == 0:
             #    print(i)
-            print(i)
-            print(self.population.best_individual().fitness)
+            print('round=' + str(i) + " fitness=" + str(self.population.best_individual().fitness))
             self.population.sexually_breed()
             self.population.select()
 
         return self.population.best_individual()
+
+    def train_until(self, fitness, max_rounds=10000):
+        for i in range(max_rounds):
+            print('round=' + str(i) + " fitness=" + str(self.population.best_individual().fitness))
+            if self.population.best_individual().fitness <= fitness:
+                break
+            self.population.sexually_breed()
+            self.population.select()
+        return self.population.best_individual()
+            
+        
