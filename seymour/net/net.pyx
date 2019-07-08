@@ -2,11 +2,16 @@ import math
 import numpy as np
 import seymour.ga as ga
 
+from libc.math cimport exp as cexp
+from libc.math cimport abs as abs
+#cython: boundscheck=False, wraparound=False, nonecheck=False
+
 def sig(x):
+    cdef double e
     try:
-        e = math.exp(-x)
+        e = cexp(-x)
     except OverflowError:
-        e = float('inf')
+        return 0
     return 1 / (1 + e)
 
 def sig_vec(v):
@@ -15,14 +20,14 @@ def sig_vec(v):
         out[i, 0] = sig(val[0])
     return np.asarray(out)
 
-def rpd(est, act):
+def rpd(double est, double act):
     # relative percent difference
     if est == act:
         return 0
     else:
         return 2 * (est - act) / (abs(est) + abs(act))
 
-def se(est, act):
+def se(double est, double act):
     return (act - est) ** 2
 
 class Network(ga.Individual):
@@ -74,7 +79,7 @@ class Network(ga.Individual):
             exp = self.evaluate(input)
             act = output
 
-            score += abs(sum(map(se, exp, act)))
+            score += np.sum(np.array(list(map(se, exp, act))))
         return score
 
 def columnize(item):

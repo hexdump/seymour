@@ -53,7 +53,7 @@ class Path(ga.Individual):
         return distance(self.evaluate(), self.target) / (steps * 2**0.5)
 
 gt = ga.GeneticTrainer(Path, (target, steps))
-s = gt.train(10)
+s = gt.train(100)
 
 print(target)
 print(s.evaluate())
