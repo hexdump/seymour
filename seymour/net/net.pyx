@@ -5,9 +5,11 @@ import seymour.ga as ga
 from libc.math cimport exp as cexp
 from libc.math cimport abs as abs
 #cython: boundscheck=False, wraparound=False, nonecheck=False
+from libc.math cimport round
 
-def sig(x):
+def sig(double x):
     cdef double e
+    x = round(x, 3)
     try:
         e = cexp(-x)
     except OverflowError:

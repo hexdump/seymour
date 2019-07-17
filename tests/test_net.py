@@ -24,9 +24,9 @@ outputs = net.columnize_list([
     [0]
 ])
 
-gt = ga.GeneticTrainer(net.Network, (inputs, outputs, 3))
+gt = ga.GeneticTrainer(net.Network, (inputs, outputs, 2))
 
-s = gt.train_until(.1)
+s = gt.train_until(.01)
 
 for input in inputs:
     print(s.evaluate(input))

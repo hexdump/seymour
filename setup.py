@@ -1,5 +1,10 @@
 import os
-from setuptools import setup
+
+from Cython.Build import cythonize
+
+setup(
+    ext_modules = cythonize("example.pyx")
+)
 
 setup(
     name = "seymour",
@@ -10,4 +15,5 @@ setup(
     url = "http://github.com/lschumm/seymour",
     packages=['seymour'],
     install_requires=['numpy'],
+    ext_modules = cythonize("example.pyx")
 )
