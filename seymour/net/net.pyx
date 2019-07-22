@@ -9,7 +9,7 @@ from libc.math cimport round
 
 def sig(double x):
     cdef double e
-    x = round(x, 3)
+    #x = round(x, 3)
     try:
         e = cexp(-x)
     except OverflowError:

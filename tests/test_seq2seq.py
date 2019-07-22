@@ -51,6 +51,16 @@ def to_sentence(vector):
 
 THOUGHT_SIZE = 5
 
+import math
+
+def sig(x):
+    #x = round(x, 3)
+    try:
+        e = math.exp(-x)
+    except OverflowError:
+        return 0
+    return 1 / (1 + e)
+
 def hetero_arrdif(x, y):
     score = 0
     if len(x) > len(y):
@@ -106,9 +116,9 @@ class Seq2Seq(ga.Individual):
         out = [0]
         while (out[-1] < .9) and (i < 30):
             [c, *thought] = to_vec(self.decoder.evaluate(thought))
-            if debug:
-                print('IS')
-                print(c)
+#            if debug:
+#                print('IS')
+#                print(c)
             #print(to_vec(self.decoder.evaluate(thought)))
             out.append(c)
             i += 1
@@ -119,10 +129,10 @@ class Seq2Seq(ga.Individual):
         for input in inputs:
             exp = self.evaluate(input)
             score += hetero_arrdif(exp, input)
-        return score
+        return sig(score)
             
 gt = ga.GeneticTrainer(Seq2Seq, ())
-s = gt.train(1)
+s = gt.train(10)
 
 #print(s.genome)
 print(s.evaluate(inputs[0], True))
