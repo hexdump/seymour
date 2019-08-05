@@ -72,7 +72,7 @@ class Network(ga.Individual):
     def evaluate(self, inp):
 
         if 'layers' not in self.__dict__:
-            self.__init_internals()
+            self.__init_internals__()
             
         for (coef, bias) in self.layers:
             inp = sig_vec(np.matmul(coef, inp) + bias)

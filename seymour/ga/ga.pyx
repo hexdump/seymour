@@ -10,8 +10,8 @@
 from random import random, shuffle
 import numpy as np
 
-SD_ERR_COEFF = 0.8
-CONV_POW = 2
+SD_ERR_COEFF = 100
+CONV_POW = 0.1
 
 def deviate(mean, stddev):
     return np.random.normal(mean, stddev)
@@ -150,7 +150,7 @@ class GeneticTrainer(object):
                   self.population.best_individual(),
                   self.population.worst_individual())
             
-            self.population.mixed_breed()
+            self.population.asexually_breed()
             self.population.select()
 
         return self.population.best_individual()
