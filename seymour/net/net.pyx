@@ -52,10 +52,9 @@ class Network(ga.Individual):
     def reproduce(self, genome):
         return Network(self.inputs, self.outputs, self.nl, genome)
 
-    def evaluate(self, inp):
-
+    def __init_internals__(self):
         idx = 0
-        layers = []
+        self.layers = []
         
         for i in range(0, self.nl):
             coef = self.genome[idx: idx + self.ni * self.ni]
@@ -64,16 +63,21 @@ class Network(ga.Individual):
             bias = self.genome[idx: idx + self.ni]
             bias = np.reshape(bias, (self.ni, 1))
             idx += self.ni
-            layers.append((coef, bias))
+            self.layers.append((coef, bias))
         
         trans = self.genome[idx: idx + self.ni * self.no]
         idx += self.ni * self.no
-        trans = np.reshape(trans, (self.no, self.ni))
+        self.trans = np.reshape(trans, (self.no, self.ni))
 
-        for (coef, bias) in layers:
+    def evaluate(self, inp):
+
+        if 'layers' not in self.__dict__:
+            self.__init_internals()
+            
+        for (coef, bias) in self.layers:
             inp = sig_vec(np.matmul(coef, inp) + bias)
             
-        return sig_vec(np.matmul(trans, inp))
+        return sig_vec(np.matmul(self.trans, inp))
 
     def fitness_function(self):
         score = 0
