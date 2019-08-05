@@ -139,7 +139,7 @@ def debug(round, best, worst):
           + " worst=" + str(worst.fitness))
     
 class GeneticTrainer(object):
-    def __init__(self, member_class, init_args, population_size):
+    def __init__(self, member_class, init_args, population_size=250):
         self.population = Population(member_class, init_args, population_size)
 
     def train(self, iterations):
