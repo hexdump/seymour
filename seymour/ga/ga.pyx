@@ -10,162 +10,86 @@
 from random import random, shuffle
 import numpy as np
 
-SD_ERR_COEFF = 100
-CONV_POW = 0.1
+import seymour.genome as genome
+import seymour.common as common
 
-def deviate(mean, stddev):
-    return np.random.normal(mean, stddev)
+SD_ERR_COEFF = 0.5
+CONV_POW = 2
 
-def mutate_genome(genome, err):
-    return [deviate(x, SD_ERR_COEFF * abs(err ** CONV_POW)) for x in genome]
-
-def mix_genomes(l1, l2):
-    assert len(l1) == len(l2)
-    return [l1[i] if random() > 0.5 else l2[i]
-            for i in range(len(l1))]
-
-def rpd(est, act):
-    # relative percent difference
-    if est == act:
-        return 0
-    else:
-        return 2 * (est - act) / (abs(est) + abs(act))
-
-def clist_rpd(est, act, length):
-    cdef double total = 0;
-    cdef int i = 0;
-
-    while i < length:
-        total += rpd(est[i], act[i])
-        i += 1;
-
-    return total
-    
-def list_rpd(est, act):
-    return clist_rpd(est, act, len(est))
-    
+# TODO: convert to cython struct
 class Individual(object):
     genome = None
-    def __init__(self):
-        if self.genome is None:
-            self.genome = [deviate(0, 1) for _ in range(self.genome_size)]
-        self.fitness = self.fitness_function()
-
-    def sexually_reproduce(self, mate):
-        assert len(self.genome) == len(mate.genome)
-        offspring = [self.reproduce(mutate_genome(mix_genomes(
-            self.genome,
-            mate.genome),
-            self.fitness/2 + mate.fitness/2))
-                            for _ in range(2)]
-        return offspring
-        
-    def asexually_reproduce(self):
-        return [self.reproduce(mutate_genome(self.genome, self.fitness))
-                for _ in range(2)]
-
-    def genome_similarity(self, other):
-        return list_rpd(self.genome, other.genome)
+    error = None
 
 class Population(object):
-    def __init__(self, member_class=Individual, init_args=(), population_size=250):
+    def __init__(self, genome_size, population_size=250):
         self.population_size = population_size
-        self.population = [member_class(*init_args)
+        self.population = [Individual()
                            for _ in range(self.population_size)]
-        
-    def sort(self):
-        self.population.sort(key=lambda i: i.fitness)
+        for individual in self.population:
+            individual.genome = genome.generate_genome(genome_size,
+                                                       mean = 0,
+                                                       err  = 1
+            )
 
-    def select(self):
-        self.population += self.population[:50]
-        self.sort()
-        self.population = self.population[:self.population_size]
-        
-    def asexually_breed(self):
-        children = []
+    def optimize(self, error, rounds=50, sd_err_coeff=SD_ERR_COEFF, conv_pow=CONV_POW):
+        for _ in range(rounds):
+            for individual in self.population:
+                individual.error = error(individual.genome)
+            print(str(_) + ' ' + str(self.population[0].error))
+            self.asexually_breed(sd_err_coeff, conv_pow)
+            self.population.sort(key=lambda i: abs(i.error))
+            self.population = self.population[:self.population_size]
+                    
+    def asexually_breed(self, sd_err_coeff, conv_pow):
+        children_genomes = []
         for i in self.population:
-            children += i.asexually_reproduce()
-        self.population = children
-
-    def sexually_breed(self):
+            i.genome = genome.asexually_reproduce(i.genome, i.error,
+                                                  sd_err_coeff, conv_pow)
+            i.fitness = None
+            
+    def sexually_breed(self, sd_err_coeff, conv_pow):
         children = []
         pop = self.population
+        final = []
         while len(pop) > 0:
             p1 = pop.pop()
-            pop.sort(key=lambda x: p1.genome_similarity(x))
-            p2 = pop[0]
-            pop.pop()
+            pop.sort(key=lambda x: genome.genome_difference(p1.genome,
+                                                            x.genome))
+            p2 = pop.pop(0)
             shuffle(pop)
             
             # sexual reproduction is symmetric, so it doesn't
             # matter that p2 isn't .sexually_reproducing with p1
-            children += p1.sexually_reproduce(p2)
+            genomes = genome.sexually_reproduce(p1.genome, p1.error,
+                                                p2.genome, p2.error,
+                                                sd_err_coeff, conv_pow)
+            p1.genome = genomes[0]
+            p2.genome = genomes[1]
             
-        self.population = children
-
-    def mixed_breed(self):
-        children = []
-        unfit = []
-        for i in self.population:
-            if i.fitness < 0.15:
-                children += i.asexually_reproduce()
-            else:
-                unfit.append(i)
-
-        shuffle(unfit)
-        if len(unfit) % 2 != 0:
-            unfit.append(unfit[0])
-            
-        while len(unfit) > 0:
-            p1 = unfit.pop()
-            p2 = unfit.pop()
-            #unfit.sort(key=lambda x: p1.genome_similarity(x))
-            #p2 = unfit[0]
-            #unfit.pop()
-            #shuffle(unfit)
-            children += p1.sexually_reproduce(p2)
-
-        self.population = children        
-
-    def best_individual(self):
-        return self.population[0]
-
-    def worst_individual(self):
-        return self.population[-1]
-
-def debug(round, best, worst):
-    print("round=" + str(round)
-          + " best=" + str(best.fitness)
-          + " worst=" + str(worst.fitness))
-    
-class GeneticTrainer(object):
-    def __init__(self, member_class, init_args, population_size=250):
-        self.population = Population(member_class, init_args, population_size)
-
-    def train(self, iterations):
-        for i in range(iterations):
-            #if i % 10 == 0:
-            #    print(i)
-            debug(i,
-                  self.population.best_individual(),
-                  self.population.worst_individual())
-            
-            self.population.asexually_breed()
-            self.population.select()
-
-        return self.population.best_individual()
-
-    def train_until(self, fitness, max_rounds=10000):
-        for i in range(max_rounds):
-            debug(i,
-                  self.population.best_individual(),
-                  self.population.worst_individual())
-
-            if self.population.best_individual().fitness <= fitness:
-                break
-            self.population.mixed_breed()
-            self.population.sort()
-            self.population.select()
-        return self.population.best_individual()
-            
+            final += [p1, p2]
         
+        self.population = final
+
+    # def mixed_breed(self):
+    #     children = []
+    #     unfit = []
+    #     for i in self.population:
+    #         if i.error < 0.15:
+    #             children += i.asexually_reproduce()
+    #         else:
+    #             unfit.append(i)
+
+    #     shuffle(unfit)
+    #     if len(unfit) % 2 != 0:
+    #         unfit.append(unfit[0])
+            
+    #     while len(unfit) > 0:
+    #         p1 = unfit.pop()
+    #         p2 = unfit.pop()
+    #         children += p1.sexually_reproduce(p2)
+
+    #     self.population = children        
+
+    def best_genome(self):
+        return self.population[0].genome

@@ -6,6 +6,8 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
 ext_modules = [
+    Extension('seymour.common', ['seymour/common/common.pyx']),
+    Extension('seymour.genome', ['seymour/genome/genome.pyx']),
     Extension('seymour.ga', ['seymour/ga/ga.pyx']),
     Extension('seymour.net', ['seymour/net/net.pyx'])
 ]

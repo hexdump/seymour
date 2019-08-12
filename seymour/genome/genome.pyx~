@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+#
+# [genome.py]
+#
+# Genome utilities for Seymour.
+# Copyright (C) 2019, Liam Schumm
+#
+
+from random import random
+from seymour.common import deviate, list_rpd
+#from libc.stdlib cimport malloc
+
+SD_ERR_COEFF = 100
+CONV_POW = 0.1
+
+def mutate_genome(genome, err):
+    return [deviate(x, SD_ERR_COEFF * abs(err ** CONV_POW))
+            for x in genome]
+
+def mix_genomes(l1, l2):
+    assert len(l1) == len(l2)
+    return [l1[i] if random() > 0.5 else l2[i]
+            for i in range(len(l1))]
+
+
+
+# cdef generate_genome(int size, double err, double mean):
+#     cdef double *genome = <double *> malloc(size * sizeof(double))
+#     if not genome:
+#         raise MemoryError('unable to allocate space for genome.')
+
+    
+def generate_genome(size, mean=0, err=1):
+    return [deviate(mean, err) for _ in range(size)]
+
+
+def asexually_reproduce(genome, error):
+    return mutate_genome(genome, error)
+
+def sexually_reproduce(genome1, error1,
+                       genome2, error2):
+    return [mutate_genome(mix_genomes(genome1, genome2),
+                          0.5 * (error1 + error2))
+            for _ in range(2)]
+
+genome_difference = list_rpd

@@ -1,11 +1,20 @@
 import math
 import numpy as np
 import seymour.ga as ga
+import numpy as np
 
 from libc.math cimport exp as cexp
 from libc.math cimport abs as abs
 #cython: boundscheck=False, wraparound=False, nonecheck=False
 from libc.math cimport round
+
+import seymour.common as common
+
+def columnize(item):
+    return np.asmatrix(item).reshape(len(item), 1)
+
+def columnize_list(list):
+    return [columnize(x) for x in list]
 
 def sig(double x):
     cdef double e
@@ -14,7 +23,7 @@ def sig(double x):
         e = cexp(-x)
     except OverflowError:
         return 0
-    return 1 / (1 + e)
+    return (1 / (1 + e)) - 0.5
 
 def sig_vec(v):
     out = np.zeros((len(v), 1))
@@ -32,64 +41,51 @@ def rpd(double est, double act):
 def se(double est, double act):
     return (act - est) ** 2
 
-class Network(ga.Individual):
+#def build_model(genome):
+#def evaluate_function(model):
 
-    def __init__(self, inputs, outputs, nl=5, genome=None):
-        # self.inputs = np.asmatrix(inputs)
-        # self.outputs = np.asmatrix(outputs)
-
-        self.inputs = inputs
-        self.outputs = outputs
-        
-        self.ni = len(inputs[0])
-        self.no = len(outputs[0])
-        self.nl = nl
-        self.genome = genome
-        self.genome_size = (self.ni * self.ni + self.ni) * self.nl + self.ni * self.no
-
-        super().__init__()
-
-    def reproduce(self, genome):
-        return Network(self.inputs, self.outputs, self.nl, genome)
-
-    def __init_internals__(self):
+def make_evaluate_function(genome,
+                           ni, no, nl=5):
+    
         idx = 0
-        self.layers = []
+        layers = []
+
+        for i in range(0, nl):
+            coef = genome[idx: idx + ni * ni]
+            coef = np.reshape(coef, (ni, ni))
+            idx += ni * ni
+            bias = genome[idx: idx + ni]
+            bias = np.reshape(bias, (ni, 1))
+            idx += ni
+            layers.append((coef, bias))
         
-        for i in range(0, self.nl):
-            coef = self.genome[idx: idx + self.ni * self.ni]
-            coef = np.reshape(coef, (self.ni, self.ni))
-            idx += self.ni * self.ni
-            bias = self.genome[idx: idx + self.ni]
-            bias = np.reshape(bias, (self.ni, 1))
-            idx += self.ni
-            self.layers.append((coef, bias))
+        trans = genome[idx: idx + ni * no]
+        idx += ni * no
+        trans = np.reshape(trans, (no, ni))
+
+        def evaluate(inp):
+            for (coef, bias) in layers:
+                inp = sig_vec(np.matmul(coef, inp) + bias * 0.01)
+
+            return sig_vec(np.matmul(trans, inp))
+
+        return evaluate
+
+def make_fitness_function(inputs, outputs,
+                          ni, no, nl=5):
+    
+    def fitness(genome):
+        f = make_evaluate_function(genome,
+                                   ni, no, nl)
         
-        trans = self.genome[idx: idx + self.ni * self.no]
-        idx += self.ni * self.no
-        self.trans = np.reshape(trans, (self.no, self.ni))
+        exp = np.asarray([f(i) for i in inputs])
 
-    def evaluate(self, inp):
+#        print(exp.flatten())
+#        print(outputs.flatten())
+        
+        return common.list_rpd(exp.flatten(), outputs.flatten())
 
-        if 'layers' not in self.__dict__:
-            self.__init_internals__()
-            
-        for (coef, bias) in self.layers:
-            inp = sig_vec(np.matmul(coef, inp) + bias)
-            
-        return sig_vec(np.matmul(self.trans, inp))
+    return fitness
 
-    def fitness_function(self):
-        score = 0
-        for (input, output) in zip(self.inputs, self.outputs):
-            exp = self.evaluate(input)
-            act = output
-
-            score += np.sum(np.array(list(map(se, exp, act))))
-        return score
-
-def columnize(item):
-    return np.asmatrix(item).reshape(len(item), 1)
-
-def columnize_list(list):
-    return [columnize(x) for x in list]
+def network_genome_size(ni, no, nl):
+    return (ni * ni + ni) * nl + ni * no
