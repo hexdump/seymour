@@ -23,7 +23,7 @@ def sig(double x):
         e = cexp(-x)
     except OverflowError:
         return 0
-    return (1 / (1 + e)) - 0.5
+    return ((1 / (1 + e)) - 0.5) * 2
 
 def sig_vec(v):
     out = np.zeros((len(v), 1))
@@ -45,47 +45,57 @@ def se(double est, double act):
 #def evaluate_function(model):
 
 def make_evaluate_function(genome,
-                           ni, no, nl=5):
+                           ni,
+                           no,
+                           nl=5,
+                           nw=None):
+    if nw is None:
+        nw = ni
     
-        idx = 0
-        layers = []
+    idx = 0
+    layers = []
 
-        for i in range(0, nl):
-            coef = genome[idx: idx + ni * ni]
-            coef = np.reshape(coef, (ni, ni))
-            idx += ni * ni
-            bias = genome[idx: idx + ni]
-            bias = np.reshape(bias, (ni, 1))
-            idx += ni
-            layers.append((coef, bias))
+    in_trans = genome[idx: idx + ni * nw]
+    idx += ni * nw
+    in_trans = np.reshape(in_trans, (nw, ni))
+    
+    for i in range(0, nl):
+        coef = genome[idx: idx + nw * nw]
+        coef = np.reshape(coef, (nw, nw))
+        idx += nw * nw
+        bias = genome[idx: idx + nw]
+        bias = np.reshape(bias, (nw, 1))
+        idx += nw
+        layers.append((coef, bias))
         
-        trans = genome[idx: idx + ni * no]
-        idx += ni * no
-        trans = np.reshape(trans, (no, ni))
+    out_trans = genome[idx: idx + nw * no]
+    idx += nw * no
+    out_trans = np.reshape(out_trans, (no, nw))
 
-        def evaluate(inp):
-            for (coef, bias) in layers:
-                inp = sig_vec(np.matmul(coef, inp) + bias * 0.01)
+    def evaluate(inp):
+        inp = sig_vec(np.matmul(in_trans, inp))
+        
+        for (coef, bias) in layers:
+            inp = sig_vec(np.matmul(coef, inp) + bias * 0.01)
 
-            return sig_vec(np.matmul(trans, inp))
+        return sig_vec(np.matmul(out_trans, inp))
 
-        return evaluate
+    return evaluate
 
 def make_fitness_function(inputs, outputs,
-                          ni, no, nl=5):
+                          ni, no, nl=5, nw=None):
     
     def fitness(genome):
         f = make_evaluate_function(genome,
-                                   ni, no, nl)
+                                   ni, no, nl, nw)
         
         exp = np.asarray([f(i) for i in inputs])
-
-#        print(exp.flatten())
-#        print(outputs.flatten())
         
         return common.list_rpd(exp.flatten(), outputs.flatten())
 
     return fitness
 
-def network_genome_size(ni, no, nl):
-    return (ni * ni + ni) * nl + ni * no
+def network_genome_size(ni, no, nl=5, nw=None):
+    if nw is None:
+        nw = ni
+    return ni * nw + (nw * nw + nw) * nl + nw * no
