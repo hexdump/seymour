@@ -38,7 +38,7 @@ error = net.make_fitness_function(inputs,
                                   outputs,
                                   2, 1, 2, 3)
 
-gp.optimize(error, 1000)
+gp.optimize(error, 100)
 
 g = gp.best_genome()
 evaluate_function = net.make_evaluate_function(g,

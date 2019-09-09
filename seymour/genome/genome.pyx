@@ -13,7 +13,7 @@ from seymour.common import deviate, list_rpd
 
 def mutate_genome(genome, err,
                   sd_err_coeff, conv_pow):
-    return [deviate(x, sd_err_coeff * abs(err ** conv_pow))
+    return [deviate(x, sd_err_coeff * abs(err ** conv_pow)) if random() > 0.5 else x
             for x in genome]
 
 def mix_genomes(l1, l2):
@@ -30,6 +30,7 @@ def mix_genomes(l1, l2):
 
     
 def generate_genome(size, mean=0, err=1):
+#    return [0 for _ in range(size)]
     return [deviate(mean, err) for _ in range(size)]
 
 

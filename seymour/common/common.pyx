@@ -21,15 +21,27 @@ cdef rpd(double est, double act):
 #        return abs(2 * (est - act) / (abs(est) + abs(act)))
 
 def clist_rpd(est, act, length):
-    cdef double total = 0;
-    cdef int i = 0;
+    total = 0
+    i = 0
 
+    length = len(est)
     while i < length:
-        total += rpd(est[i], act[i])
-        i += 1;
+        if isinstance(est[i], list):
+            total += clist_rpd(est[i], act[i], len(est[i]))
+#        total += rpd(est[i], act[i])
+        i += 1
 
     return total
     
 def list_rpd(est, act):
-    return clist_rpd(est, act, len(est))
+    total = 0
+    
+    if isinstance(est, np.float64) or isinstance(est, float):
+        total += rpd(est, act)
+    else:
+        est = est.flatten()
+        act = act.flatten()
+        for i in range(len(est)):
+            total += list_rpd(est[i], act[i])
+    return total
     

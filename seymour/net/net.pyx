@@ -14,7 +14,7 @@ def columnize(item):
     return np.asmatrix(item).reshape(len(item), 1)
 
 def columnize_list(list):
-    return [columnize(x) for x in list]
+    return np.asarray([columnize(x) for x in list])
 
 def sig(double x):
     cdef double e
@@ -78,7 +78,7 @@ def make_evaluate_function(genome,
         for (coef, bias) in layers:
             inp = sig_vec(np.matmul(coef, inp) + bias * 0.01)
 
-        return sig_vec(np.matmul(out_trans, inp))
+        return sig_vec(np.matmul(out_trans, inp) * (1/nw))
 
     return evaluate
 
@@ -90,8 +90,14 @@ def make_fitness_function(inputs, outputs,
                                    ni, no, nl, nw)
         
         exp = np.asarray([f(i) for i in inputs])
+
+#        print(exp)
+#        print(outputs)
+#        print(np.hstack(exp))
+#        print(np.hstack(outputs))
+#        print(outputs)
         
-        return common.list_rpd(exp.flatten(), outputs.flatten())
+        return common.list_rpd(np.hstack(exp), np.hstack(outputs))
 
     return fitness
 
