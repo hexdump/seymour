@@ -9,7 +9,8 @@ ext_modules = [
     Extension('seymour.common', ['seymour/common/common.pyx']),
     Extension('seymour.genome', ['seymour/genome/genome.pyx']),
     Extension('seymour.ga', ['seymour/ga/ga.pyx']),
-    Extension('seymour.net', ['seymour/net/net.pyx'])
+    Extension('seymour.net', ['seymour/net/net.pyx']),
+    Extension('seymour.manifold', ['seymour/manifold/manifold.pyx'])
 ]
     
 setup(

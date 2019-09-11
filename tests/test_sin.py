@@ -2,7 +2,7 @@
 
 #
 # [tests/test_xor.py]
-#
+##
 # A binary addition model trained using a Seymour net.
 # Copyright (C) 2019, Liam Schumm
 #
@@ -10,7 +10,7 @@
 import seymour.net as net
 import seymour.ga as ga
 from seymour.common import list_rpd
-
+from seymour.manifold import cossim, layer, list_rpd
 
 # from progressbar import ProgressBar
 
@@ -62,39 +62,33 @@ from seymour.common import list_rpd
 
 
 inputs = [
-    [0, 0],
-    [0, 0.5],
-    [0.5, 0],
-    [0.5, 0.5]
+    [0,0],
+    [0,1],
+    [1,0],
+    [1,1]
 ]
 
 outputs = [
     [0],
-    [0.5],
-    [0.5],
-    [1]
+    [1],
+    [1],
+    [0]
 ]
+
+# from math import floor
+# def layer(*argv):
+#     total = 0
+#     for arg in argv:
+#         total += sin(arg)#sin(floor(arg * 2)) * sin(arg) 
+#     return total
 
 import math
 from math import sin
 
 def rpd(est, act):
     return abs(est - act)
-
-def list_rpd(x1, x2):
-    err = 0
-    for x, y in zip(x1, x2):
-        if isinstance(x, list):
-            err += list_rpd(x, y)
-        else:
-            err += rpd(x, y)
-    return err
     
-
-def layer(*argv):
-    return sum(sin(arg) for arg in argv) #/ len(argv)
-
-layers = [3, 2, 1]
+layers = [3, 3, 1]
 def error(genome):
     exp = []
     for (i, o) in zip(inputs, outputs):
@@ -107,7 +101,7 @@ def error(genome):
                 v.append(layer(genome[g], *v0))
                 g += 1
         exp.append(v)
-    return list_rpd(exp, outputs)
+    return sum(list_rpd(exp[i], outputs[i]) for i in range(len(exp)))
 #    return exp
 
 def evaluate(genome, i):

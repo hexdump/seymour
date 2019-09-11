@@ -9,7 +9,7 @@
 
 import seymour.net as net
 import seymour.ga as ga
-
+from seymour.manifold import cossim
 import numpy as np
 
 np.set_printoptions(suppress=True)

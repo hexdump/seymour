@@ -9,7 +9,7 @@
 
 import seymour.net as net
 import seymour.ga as ga
-
+from seymour.manifold import layer, list_rpd
 import numpy as np
 
 np.set_printoptions(suppress=True)
@@ -81,22 +81,6 @@ with open("train.csv") as f:
 import math
 from math import sin
 
-def rpd(est, act):
-    return abs(est - act)
-
-def list_rpd(x1, x2):
-    err = 0
-    for x, y in zip(x1, x2):
-        if isinstance(x, list):
-            err += list_rpd(x, y)
-        else:
-            err += rpd(x, y)
-    return err
-    
-
-def layer(*argv):
-    return sum(sin(arg) for arg in argv) #/ len(argv)
-
 test_inputs = inputs
 test_outputs = outputs
 
@@ -113,14 +97,20 @@ def error(genome):
 #            c = genome[g]
             x = layer(*v0)
             for j in range(l):
-                v.append(x + sin(genome[g]))
+                v.append(layer(genome[g], *v0))
                 g += 1
-        exp.append(v)
+                #v.append(x + sin(genome[g]))
+                #g += 1
+                
+        exp.append([(x + 1)/2 for x in v])
+#    exp = [(x + 1) / 2 for x in exp]
     return list_rpd(exp, outputs)
 #    return exp
 
 def evaluate(genome, i):
     g = 0
+#    exp =
+#    i
     v = i
     for l in layers:
         v0 = v
@@ -128,9 +118,9 @@ def evaluate(genome, i):
         for j in range(l):
             v.append(layer(genome[g], *v0))
             g += 1
-    return v
+    return [(x+1)/2 for x in v]
 
-gp = ga.Population(sum(layers), 1000)
+gp = ga.Population(sum(layers), 10)
 import random
 for i in range(500):
     random.shuffle(inputs)
@@ -138,6 +128,10 @@ for i in range(500):
     test_inputs = inputs[:100]
     test_outputs = outputs[:100]
     gp.optimize(error, 1)
+    g = gp.best_genome()
+    test_inputs = inputs
+    test_outputs = outputs
+    print(evaluate(g, inputs[0]))
 #    test_inputs = inputs[
     
     
