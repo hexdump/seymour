@@ -1,21 +1,33 @@
-extern crate pbr;
-extern crate rand;
-
 use rand::prelude::*;
 use pbr::ProgressBar;
 
 use std::f64::consts::PI;
 use std::cmp::Ordering;
- 
-const LAYERS_NUM: usize = 5;
-const LAYER_SIZES: [usize; LAYERS_NUM] = [748, 500, 300, 40, 10];
-const LAYER_SIZES_SUM: usize = 300 + 40 + 10;
 
+// customize this
+const NUM_LAYERS: usize                = 5;
+const LAYER_SIZES: [usize; NUM_LAYERS] = [3, 90,  90,  10,  5];
+const LAYER_SIZES_SUM: usize           =     90 + 90 + 10 + 5;
+const SAMPLE_SIZE: usize               = 8;
+
+//////////// don't touch! ////////////
 const INPUT_SIZE: usize = LAYER_SIZES[0];
-const OUTPUT_SIZE: usize = LAYER_SIZES[LAYERS_NUM - 1];
-
+const OUTPUT_SIZE: usize = LAYER_SIZES[NUM_LAYERS - 1];
 const GENOME_SIZE: usize = LAYER_SIZES_SUM;
+//////////// don't touch! ////////////
+
+// customize this
 const POPULATION_SIZE: usize = 1000;
+const data:[([f64; INPUT_SIZE], [f64; OUTPUT_SIZE]); SAMPLE_SIZE] = [
+    ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]),
+    ([1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]),
+    ([0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 1.0, 1.0]),
+    ([0.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 0.0]),
+    ([0.0, 1.0, 1.0], [1.0, 1.0, 1.0, 0.0, 1.0]),
+    ([1.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 0.0]),
+    ([1.0, 1.0, 0.0], [0.0, 0.0, 1.0, 1.0, 0.0]),
+    ([1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 0.0, 0.0]),
+];
 
 #[derive(Copy, Clone)]
 struct Agent {
@@ -36,9 +48,9 @@ fn vec_rpd(v0: [f64; OUTPUT_SIZE], v1: [f64; OUTPUT_SIZE]) -> f64 {
     return total / (OUTPUT_SIZE as f64);
 }
 
-fn error(agent: Agent, layers: &mut Vec<Vec<f64>>, data: &Vec<([f64; INPUT_SIZE], [f64; OUTPUT_SIZE])>) -> f64 {
+fn error(agent: Agent, layers: &mut Vec<Vec<f64>>) -> f64 {
     let mut total: f64 = 0.0;
-        for datum in &data[..10] {
+        for datum in data.iter() {
             let input = &datum.0;
             let output = &datum.1;
             
@@ -48,33 +60,15 @@ fn error(agent: Agent, layers: &mut Vec<Vec<f64>>, data: &Vec<([f64; INPUT_SIZE]
     return total;
     
 }
-
-fn full_error(agent: Agent, layers: &mut Vec<Vec<f64>>, data: &Vec<([f64; INPUT_SIZE], [f64; OUTPUT_SIZE])>) -> f64 {
-    let mut total: f64 = 0.0;
-        for datum in &data[..10000] {
-            let input = &datum.0;
-            let output = &datum.1;
-            
-            let estimated = evaluate(agent, *input, layers);
-            total += vec_rpd(estimated, *output);
-        }
-    return total;
-    
-}
-
-
-//fn sigmoid() {
-//}
 
 fn manifold(gene: f64, inputs: Vec<f64>) -> f64 {
-    
     let mut total = 0.0;
     for i in 0..inputs.len() {
         let x = inputs[i];
-        total += x;
+        total += (gene * x).sin() + (x % gene + x).cos();
     }
-    
-    return total.cos() + gene.cos();
+
+    return total / (inputs.len() as f64);
 }
 
 
@@ -106,41 +100,15 @@ fn evaluate(agent: Agent, input: [f64; INPUT_SIZE], layers: &mut Vec<Vec<f64>>) 
     let output_vec = &layers[layers.len() - 1];
     let mut output: [f64; OUTPUT_SIZE] = [0.0; OUTPUT_SIZE];
     for i in 0..OUTPUT_SIZE {
-        output[i] = output_vec[i];
-    }
-//    }
-
-    // Use enumerate to get the index
-//    let mut iter = output_vec.iter().enumerate();
-    // we get the first entry
-//    let init = iter.next().ok_or("Need at least one input")?;
-    // we process the rest
-    let mut max_idx: usize = 0;
-    
-    for i in 0..OUTPUT_SIZE {
-        if output[i] > output[max_idx] {
-            max_idx = i
+        if output_vec[i] < 0.0 {
+            output[i] = 0.0;
         }
+        else {
+            output[i] = 1.0;
+        }
+            
+//        output[i] = output_vec[i].round().abs();
     }
-
-    // let result = iter.fold(init, |acc, x| {
-    //     // return None if x is NaN
-    //     let cmp = x.1.partial_cmp(acc.1)?;
-    //     // if x is greater the acc
-    //     let max = if let std::cmp::Ordering::Greater = cmp {
-    //         x
-    //     } else {
-    //         acc
-    //     };
-    //     Some(max)
-    // });
-    
-//    onehot_idx: usize = output_vec.iter().cloned().fold(0./0., f64::max);
-  
-    for i in 0..OUTPUT_SIZE {
-        output[i] = 0.0;
-    }
-    output[max_idx] = 1.0;
 
     return output;
     
@@ -153,7 +121,7 @@ fn compare_floats(a: f64, b: f64, decimal_places: u8) -> Ordering {
     if a > b {
         return Ordering::Greater;
     }
-    else if (a < b) {
+    else if a < b {
         return Ordering::Less;
     }
     else {
@@ -175,8 +143,11 @@ use rand::distributions::{Normal, Distribution};
 
 fn mutate_genome(mut agent: &mut Agent, mut rng: ThreadRng) {
     for i in 0..GENOME_SIZE {
-        let normal = Normal::new(agent.genome[i], 0.06 * agent.error * agent.error);
-        agent.genome[i] = normal.sample(&mut rng);
+        let r: f64 = rng.gen();
+        if (r > 0.25) {
+            let normal = Normal::new(agent.genome[i],  agent.error * 2.0);
+            agent.genome[i] = normal.sample(&mut rng);
+        }
     }
 }
 
@@ -211,29 +182,6 @@ fn lines_from_file(filename: impl AsRef<Path>) -> Vec<String> {
 }
 
 fn main() {
-    let mut data: Vec<([f64; 748], [f64; 10])> = Vec::new();
-    let mut pb = ProgressBar::new(41999 / 5 as u64);
-
-    let i = 0;
-    pb.inc();
-    
-    for line in lines_from_file("data.csv") {
-        if i % 100 == 0 {
-            pb.inc();
-        }
-//        if i > 1 {
-//            break;
-//        }
-        let items: Vec<&str> = line.split(",").collect();
-        if let Some((label, pixels)) = items.split_first() {
-            let label_int = label.parse::<usize>().unwrap();
-            let pixels_ints: Vec<usize> = pixels.iter().map(|x| x.parse::<usize>().unwrap()).collect();
-            data.push(((parse_pixels(pixels_ints), parse_label(label_int))));
-        }
-    }
-
-    pb.finish();
-
     let mut layers: Vec<Vec<f64>> = Vec::new();
     
     // intialize the space for data processing. currently, since
@@ -244,14 +192,15 @@ fn main() {
     }
 
     let mut rng: ThreadRng = thread_rng();
-//    let mut rng = rand_pcg::Pcg32::seed_from_u64(123);
 
-    
     // note that this will initialize these arrays INDEPENDENTLY
     // for each agent; they won't all be initialized with the same
     // genome.
     let mut population: Vec<Agent> = Vec::new();
 
+
+    // this is the most intensive part, and will hopefully be
+    // multithreaded soon.
     println!("generating genomes...");
     let mut pb = ProgressBar::new((POPULATION_SIZE) as u64);
     for i in 0..POPULATION_SIZE{
@@ -264,36 +213,33 @@ fn main() {
         pb.inc();
     }
     pb.finish();
-    
-    for _ in 0..POPULATION_SIZE {
 
+    for ip in 0..POPULATION_SIZE {
 
-        println!("{}", full_error(population[0], &mut layers, &data));
-        println!("{:?}", evaluate(population[0], data[0].0, &mut layers));
-    
         println!("evaluating agents...");
         let mut pb = ProgressBar::new((POPULATION_SIZE) as u64);
         for i in 0..POPULATION_SIZE {
             pb.inc();
-            population[i].error = error(population[i], &mut layers, &data);
+            population[i].error = 100.0 * error(population[i], &mut layers) / (POPULATION_SIZE as f64);
         }
         pb.finish();
 
         population.sort_by(|a, b| compare_floats(a.error, b.error, 10));
-//        println!("{}", error(population[0], &mut layers));
-
 
         for i in 0..POPULATION_SIZE/2 {
             population[POPULATION_SIZE - i - 1] = population[i];
         }
-        
-        data.shuffle(&mut rng);
-        
+
         for i in 0..POPULATION_SIZE/2 {
             breed_genomes(population[2 * i].genome,
                           population[2 * i + 1].genome);
         }
 
+        println!("min_e = {}", population[0].error);
+        for datum in data.iter() {
+            println!("example = {:?}", evaluate(population[0], datum.0, &mut layers));
+        }
+        
         for i in 0..POPULATION_SIZE {
             mutate_genome(&mut population[i], rng);
         }

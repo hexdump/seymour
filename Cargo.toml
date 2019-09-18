@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 rand = "0.7"
 pbr = "1.0.1"
+fastapprox = "0.3.0"

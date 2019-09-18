@@ -7,3 +7,4 @@ dist
 *.c
 *.so
 .DS_Store
+target
