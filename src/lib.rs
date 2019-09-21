@@ -4,9 +4,9 @@ use pbr::ProgressBar;
 use std::f64::consts::PI;
 use std::cmp::Ordering;
 
-struct OptimizerParameters<'a> {
+struct OptimizerParameters {
     num_layers: usize,
-    layer_sizes: &'a Vec<usize>,
+    layer_sizes: Vec<usize>,
     input_size: usize,
     output_size: usize,
     population_size: usize,
@@ -15,12 +15,29 @@ struct OptimizerParameters<'a> {
     iterations: usize
 }
 
-struct Agent {
+pub struct Agent {
     genome: Vec<f64>,
     error: f64
 }
 
-fn rpd(x0: f64, x1: f64) -> f64{
+pub struct Manifold {//<'a> {
+    agent: Agent,
+    op: OptimizerParameters //<'a>
+}
+
+impl Manifold { //<'_>{
+    fn apply(&self, input: &Vec<f64>) -> Vec<f64> {
+        let mut layers: Vec<Vec<f64>> = Vec::new();
+        
+        for layer_size in self.op.layer_sizes.iter() {
+            layers.push(vec![0.0; *layer_size]);
+        }
+
+        return evaluate(&self.agent, input, &mut layers);
+    }
+}
+
+fn rpd(x0: f64, x1: f64) -> f64 {
     return (x0 - x1).abs();
 }
 
@@ -38,9 +55,8 @@ fn update_error(agent: &mut Agent, layers: &mut Vec<Vec<f64>>, op: &OptimizerPar
     for datum in op.dataset.iter() {
         let input = &datum.0;
         let output = &datum.1;
-        let mut holder = input.to_vec();
-        evaluate(&agent, &mut holder, layers);
-        total += vec_rpd(&holder, output);
+        let est = evaluate(&agent, input, layers);
+        total += vec_rpd(&est, output);
     }
     agent.error = total;
 }
@@ -55,7 +71,7 @@ fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
 }
 
 
-fn evaluate<'a> (agent: &Agent, input: &mut Vec<f64>, layers: &mut Vec<Vec<f64>>) {
+fn evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>) -> Vec<f64>{
 
     let mut g = 0;
     let mut last: Vec<f64> = Vec::new();
@@ -71,12 +87,11 @@ fn evaluate<'a> (agent: &Agent, input: &mut Vec<f64>, layers: &mut Vec<Vec<f64>>
         
         for j in 0..current.len() {
             let mut n: usize = 0;
-//            n = (((gene2 * 0.2).tanh() * 10.0).round() as i32).abs() as usize;
             n = 5;
             
-            let mut n0 = j - n; // overflows since it's a usize
-            if n > j {
-                n0 = 0;
+            let mut n0 = 0; 
+            if n <= j {
+                n0 = j - n; // overflows since it's a usize, so we check
             }
 
             let mut n1 = j + n;
@@ -92,29 +107,12 @@ fn evaluate<'a> (agent: &Agent, input: &mut Vec<f64>, layers: &mut Vec<Vec<f64>>
         last.truncate(current.len());
     }
 
-    input.truncate(0);
+    let mut output = Vec::new();
     for val in layers[layers.len() - 1].iter() {
-        input.push(*val);
+        output.push(*val);
     }
-    
-//    let output_vec = layers[layers.len() - 1].to_vec();
-//    return &output_vec;
-//    return &layers[layers.len() - 1].to_vec();
-//    let output_vec = &layers[layers.len() - 1];
-//    for i in 0..OUTPUT_SIZE {
-//        if output_vec[i] < 0.0 {
-//            output_vec[i] = 0.0;
-//        }
-//        else {
-//            output[i] = 1.0;
-//        }
-            
-//        output[i] = output_vec[i].round().abs();
+    return output;
 }
-
-//     return output;
-    
-// }
 
 fn compare_floats(a: f64, b: f64, decimal_places: u8) -> Ordering {
     let factor = 10.0f64.powi(decimal_places as i32);
@@ -188,12 +186,13 @@ fn breed_population(population: &mut Vec<Agent>) {
     }
 }
 
-fn optimize(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) { //op: OptimizerParameters) {
+pub fn solve(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) -> Manifold {
     
     let mut layers: Vec<Vec<f64>> = Vec::new();
+    
     let mut op = OptimizerParameters {
         num_layers: layer_sizes.len(),
-        layer_sizes: &layer_sizes,
+        layer_sizes: layer_sizes.to_vec(),
         input_size: layer_sizes[0],
         output_size: layer_sizes[layer_sizes.len() - 1],
         population_size: 1000,
@@ -257,24 +256,16 @@ fn optimize(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) { 
         
         println!("min_e = {}", population[0].error);
         for datum in op.dataset.iter() {
-            let mut holder: Vec<f64> = datum.0.to_vec();
-            evaluate(&population[0], &mut holder, &mut layers);
-            println!("example = {:?}", holder);
+            let est = evaluate(&population[0], &datum.0, &mut layers);
+            println!("example = {:?}", est);
         }
         
         for i in 0..op.population_size {
             mutate_genome(&mut population[i], rng);
         }
     }
-}
 
-fn main() {
-    let mut dataset = vec![
-        (vec![0.0, 0.0], vec![0.0]),
-        (vec![0.0, 1.0], vec![1.0]),
-        (vec![1.0, 0.0], vec![1.0]),
-        (vec![1.0, 1.0], vec![0.0])
-    ];
-    optimize(vec![2, 3, 4, 1],
-             &mut dataset);
+    return Manifold { agent: Agent { genome: population[0].genome.to_vec(),
+                                     error: population[0].error },
+                      op: op }
 }
