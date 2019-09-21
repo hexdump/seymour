@@ -20,13 +20,13 @@ pub struct Agent {
     error: f64
 }
 
-pub struct Manifold {//<'a> {
+pub struct Model {//<'a> {
     agent: Agent,
     op: OptimizerParameters //<'a>
 }
 
-impl Manifold { //<'_>{
-    fn apply(&self, input: &Vec<f64>) -> Vec<f64> {
+impl Model { //<'_>{
+    pub fn apply(&self, input: &Vec<f64>) -> Vec<f64> {
         let mut layers: Vec<Vec<f64>> = Vec::new();
         
         for layer_size in self.op.layer_sizes.iter() {
@@ -186,7 +186,7 @@ fn breed_population(population: &mut Vec<Agent>) {
     }
 }
 
-pub fn solve(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) -> Manifold {
+pub fn solve(layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
     
     let mut layers: Vec<Vec<f64>> = Vec::new();
     
@@ -198,7 +198,7 @@ pub fn solve(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) -
         population_size: 1000,
         genome_size: 0,
         dataset: dataset.to_vec(),
-        iterations: 100
+        iterations: iterations
     };
     
     for i in 0..op.num_layers - 1 {
@@ -265,7 +265,7 @@ pub fn solve(layer_sizes: Vec<usize>, dataset: &mut Vec<(Vec<f64>, Vec<f64>)>) -
         }
     }
 
-    return Manifold { agent: Agent { genome: population[0].genome.to_vec(),
+    return Model { agent: Agent { genome: population[0].genome.to_vec(),
                                      error: population[0].error },
                       op: op }
 }
