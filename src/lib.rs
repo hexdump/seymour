@@ -1,4 +1,7 @@
 use rand::prelude::*;
+use rayon::join;
+use rayon::prelude::*;
+
 use pbr::ProgressBar;
 
 use std::f64::consts::PI;
@@ -16,13 +19,14 @@ struct OptimizerParameters {
 }
 
 pub struct Agent {
-    genome: Vec<f64>,
-    error: f64
+    pub genome: Vec<f64>,
+    pub error: f64
 }
 
 pub struct Model {//<'a> {
     agent: Agent,
-    op: OptimizerParameters //<'a>
+    op: OptimizerParameters, //<'a>
+    evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>
 }
 
 impl Model { //<'_>{
@@ -33,35 +37,39 @@ impl Model { //<'_>{
             layers.push(vec![0.0; *layer_size]);
         }
 
-        return evaluate(&self.agent, input, &mut layers);
+        return (self.evaluate)(&self.agent, input, &mut layers);
     }
 }
 
-fn rpd(x0: f64, x1: f64) -> f64 {
+fn diff(x0: f64, x1: f64) -> f64 {
     return (x0 - x1).abs();
 }
 
-fn vec_rpd(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {
-    
+fn vec_diff(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {  
     let mut total: f64 = 0.0;
-    for i in 0..v0.len() {
-        total += rpd(v0[i], v1[i]);
+    
+    for i in 0..v0.len().min(v1.len()) {
+        total += diff(v0[i], v1[i]);
     }
+
+    total *= 1.0 + (v0.len() as f64 - v1.len() as f64) / (v0.len().max(v1.len()) as f64);
+
+    
     return total / (v0.len() as f64);
 }
 
-fn update_error(agent: &mut Agent, layers: &mut Vec<Vec<f64>>, op: &OptimizerParameters) {
+fn update_error(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, agent: &mut Agent, layers: &mut Vec<Vec<f64>>, op: &OptimizerParameters) {
     let mut total: f64 = 0.0;
     for datum in op.dataset.iter() {
         let input = &datum.0;
         let output = &datum.1;
         let est = evaluate(&agent, input, layers);
-        total += vec_rpd(&est, output);
+        total += vec_diff(&est, output);
     }
     agent.error = total;
 }
 
-fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
+pub fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
     let mut total = 0.0;
     for i in 0..inputs.len() {
         let x = inputs[i];
@@ -71,7 +79,7 @@ fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
 }
 
 
-fn evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>) -> Vec<f64>{
+pub fn net_evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>) -> Vec<f64>{
 
     let mut g = 0;
     let mut last: Vec<f64> = Vec::new();
@@ -186,16 +194,14 @@ fn breed_population(population: &mut Vec<Agent>) {
     }
 }
 
-pub fn solve(layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
-    
-    let mut layers: Vec<Vec<f64>> = Vec::new();
+pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
     
     let mut op = OptimizerParameters {
         num_layers: layer_sizes.len(),
         layer_sizes: layer_sizes.to_vec(),
         input_size: layer_sizes[0],
         output_size: layer_sizes[layer_sizes.len() - 1],
-        population_size: 1000,
+        population_size: 10,
         genome_size: 0,
         dataset: dataset.to_vec(),
         iterations: iterations
@@ -205,11 +211,31 @@ pub fn solve(layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, itera
         op.genome_size += layer_sizes[i] * layer_sizes[i + 1];
     }
         
+
+        
     // intialize the space for data processing. currently, since
     // seymour is single-threaded, this space is shared by all
     // Agents.
+    let mut layers: Vec<Vec<f64>> = Vec::new();
     for layer_size in op.layer_sizes.iter() {
         layers.push(vec![0.0; *layer_size]);
+    }
+  
+    let mut layers0: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers0.push(vec![0.0; *layer_size]);
+    }
+    let mut layers1: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers1.push(vec![0.0; *layer_size]);
+    }
+    let mut layers2: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers2.push(vec![0.0; *layer_size]);
+    }
+    let mut layers3: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers3.push(vec![0.0; *layer_size]);
     }
 
     let mut rng: ThreadRng = thread_rng();
@@ -238,10 +264,48 @@ pub fn solve(layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, itera
 
         println!("evaluating agents...");
         let mut pb = ProgressBar::new((op.population_size) as u64);
-        for mut agent in &mut population {
-            pb.inc();
-            update_error(&mut agent, &mut layers, &op);
-        }
+
+        let population_len = population.len();
+        let (mut slice_left, mut slice_right) = population.split_at_mut(population_len / 2);
+        
+        let slice_left_len = slice_left.len();
+        let (mut slice0, mut slice1) = slice_left.split_at_mut(slice_left_len / 2);
+
+        let slice_right_len = slice_right.len();
+        let (mut slice2, mut slice3) = slice_right.split_at_mut(slice_right_len / 2);
+        
+        join(
+            ||  {
+                join(
+                    || {
+                        for mut agent in slice0 {
+                            update_error(evaluate, &mut agent, &mut layers0, &op);
+                            println!("done!");
+                        }
+                    },
+                    || {
+                        for mut agent in slice1 {
+                            update_error(evaluate, &mut agent, &mut layers1, &op);
+                        }
+                    },
+                )
+            },
+            || {
+                join(
+                    || {
+                        for mut agent in slice2 {
+                            update_error(evaluate, &mut agent, &mut layers2, &op);
+                        }                 
+                    },
+                    || {
+                        for mut agent in slice3 {
+                            update_error(evaluate, &mut agent, &mut layers3, &op);
+                        }                
+                    }
+                )
+            }
+        );
+        
         pb.finish();
 
         population.sort_by(|a, b| compare_floats(a.error, b.error, 10));
@@ -265,7 +329,8 @@ pub fn solve(layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, itera
         }
     }
 
-    return Model { agent: Agent { genome: population[0].genome.to_vec(),
-                                     error: population[0].error },
+    return Model { evaluate: evaluate,
+                   agent: Agent { genome: population[0].genome.to_vec(),
+                                  error: population[0].error },
                       op: op }
 }
