@@ -1,4 +1,4 @@
-<img src="logo.eps" alt="lol" style="zoom:33%;" align="left" />
+<img src="logo.png" alt="Cartoon picture of a venus fly trap." width="200px" align="left" />
 
 # seymour
 
