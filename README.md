@@ -4,7 +4,7 @@
 
 *Feed me training data, Seymour!*
 
-A genetic algorithm-based, non-standard neural network solver library. [logo.eps](logo.eps) 
+A genetic algorithm-based, non-standard neural network solver library.
 
 
 # Getting Started
