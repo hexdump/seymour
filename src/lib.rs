@@ -1,9 +1,7 @@
 use rand::prelude::*;
 use rayon::join;
 use rayon::prelude::*;
-
-use pbr::ProgressBar;
-
+use fastapprox::fast::*;
 use std::f64::consts::PI;
 use std::cmp::Ordering;
 
@@ -15,6 +13,7 @@ struct OptimizerParameters {
     population_size: usize,
     genome_size: usize,
     dataset: Vec<(Vec<f64>, Vec<f64>)>,
+    test_dataset: Vec<(Vec<f64>, Vec<f64>)>,
     iterations: usize
 }
 
@@ -29,7 +28,7 @@ pub struct Model {//<'a> {
     evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>
 }
 
-impl Model { //<'_>{
+impl Model {
     pub fn apply(&self, input: &Vec<f64>) -> Vec<f64> {
         let mut layers: Vec<Vec<f64>> = Vec::new();
         
@@ -39,10 +38,22 @@ impl Model { //<'_>{
 
         return (self.evaluate)(&self.agent, input, &mut layers);
     }
+
+    pub fn dump(&self, filename: String) {
+        let mut file = std::fs::File::create(filename).expect("create failed");
+        file.write_all(format!("layers = {:?}\n", self.op.layer_sizes).as_bytes()).expect("write failed.");
+        file.write_all(format!("genome = {:?}\n", self.agent.genome).as_bytes()).expect("write failed");
+        println!("data written to file" );
+    }
 }
 
 fn diff(x0: f64, x1: f64) -> f64 {
-    return (x0 - x1).abs();
+    if (x0 == x1) && (x1 == 0.0) {
+        return 0.0;
+    }
+    else {
+        return (2.0 * (x0 - x1) / (x0 + x1)).abs();
+    }
 }
 
 fn vec_diff(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {  
@@ -60,22 +71,28 @@ fn vec_diff(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {
 
 fn update_error(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, agent: &mut Agent, layers: &mut Vec<Vec<f64>>, op: &OptimizerParameters) {
     let mut total: f64 = 0.0;
-    for datum in op.dataset.iter() {
+    for datum in op.dataset[..100].iter() {
         let input = &datum.0;
         let output = &datum.1;
         let est = evaluate(&agent, input, layers);
         total += vec_diff(&est, output);
     }
+    total = total / (op.dataset[..100].len() as f64);
     agent.error = total;
+}
+
+fn sigmoid(x: f64) -> f64 {
+    return 1.0 / (1.0 + (-x).exp());
 }
 
 pub fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
     let mut total = 0.0;
     for i in 0..inputs.len() {
         let x = inputs[i];
-        total += ((genes[i] + x) + (i as f64)).cos();
+        total += genes[i].mul_add(x,
+                                  x.sin());
     }
-    return total.cos(); // / (inputs.len() as f64);
+    return sigmoid(total); // / (inputs.len() as f64);
 }
 
 
@@ -153,8 +170,10 @@ fn mutate_genome(mut agent: &mut Agent, mut rng: ThreadRng) {
     for i in 0..agent.genome.len() {
         let r: f64 = rng.gen();
         if (r > 0.25) {
-            let normal = Normal::new(agent.genome[i],  agent.error * 0.5);
-            agent.genome[i] = normal.sample(&mut rng);
+            if agent.error > 0.0 {
+                let normal = Normal::new(agent.genome[i].into(), ((sigmoid(agent.error * agent.error)).into()));
+                agent.genome[i] = normal.sample(&mut rng) as f64;
+            }
         }
     }
 }
@@ -164,14 +183,6 @@ use std::{
     io::{prelude::*, BufReader},
     path::Path,
 };
-
-fn lines_from_file(filename: impl AsRef<Path>) -> Vec<String> {
-    let file = File::open(filename).expect("no such file");
-    let buf = BufReader::new(file);
-    buf.lines()
-        .map(|l| l.expect("Could  not parse line"))
-        .collect()
-}
 
 fn breed_population(population: &mut Vec<Agent>) {
 
@@ -194,33 +205,32 @@ fn breed_population(population: &mut Vec<Agent>) {
     }
 }
 
-pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
+pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, test_dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
     
     let mut op = OptimizerParameters {
         num_layers: layer_sizes.len(),
         layer_sizes: layer_sizes.to_vec(),
         input_size: layer_sizes[0],
         output_size: layer_sizes[layer_sizes.len() - 1],
-        population_size: 10,
+        population_size: 1000,
         genome_size: 0,
         dataset: dataset.to_vec(),
+        test_dataset: test_dataset.to_vec(),
         iterations: iterations
     };
+
+    let mut best_genome: Vec<f64> = Vec::new();
+    let mut best_error: f64 = std::f64::INFINITY;
     
     for i in 0..op.num_layers - 1 {
         op.genome_size += layer_sizes[i] * layer_sizes[i + 1];
     }
-        
-
-        
-    // intialize the space for data processing. currently, since
-    // seymour is single-threaded, this space is shared by all
-    // Agents.
+    
+    // intialize the space for data processing for each core.
     let mut layers: Vec<Vec<f64>> = Vec::new();
     for layer_size in op.layer_sizes.iter() {
         layers.push(vec![0.0; *layer_size]);
-    }
-  
+    }  
     let mut layers0: Vec<Vec<f64>> = Vec::new();
     for layer_size in op.layer_sizes.iter() {
         layers0.push(vec![0.0; *layer_size]);
@@ -245,10 +255,6 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
     // genome.
     let mut population: Vec<Agent> = Vec::new();
 
-    // this is the most intensive part, and will hopefully be
-    // multithreaded soon.
-    println!("generating genomes...");
-    let mut pb = ProgressBar::new((op.population_size) as u64);
     for i in 0..op.population_size{
         population.push(Agent { genome: vec![0.0; op.genome_size],
                                 error: 0.0 });
@@ -256,14 +262,9 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
         for j in 0..op.genome_size {
             agent.genome[j] = rng.gen::<f64>();
         }
-        pb.inc();
     }
-    pb.finish();
 
     for ip in 0..op.iterations {
-
-        println!("evaluating agents...");
-        let mut pb = ProgressBar::new((op.population_size) as u64);
 
         let population_len = population.len();
         let (mut slice_left, mut slice_right) = population.split_at_mut(population_len / 2);
@@ -280,7 +281,6 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
                     || {
                         for mut agent in slice0 {
                             update_error(evaluate, &mut agent, &mut layers0, &op);
-                            println!("done!");
                         }
                     },
                     || {
@@ -305,8 +305,6 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
                 )
             }
         );
-        
-        pb.finish();
 
         population.sort_by(|a, b| compare_floats(a.error, b.error, 10));
 
@@ -316,21 +314,31 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
             population[op.population_size - i - 1].error = population[i].error;
         }
 
-        breed_population(&mut population);
-        
-        println!("min_e = {}", population[0].error);
-        for datum in op.dataset.iter() {
-            let est = evaluate(&population[0], &datum.0, &mut layers);
-            println!("example = {:?}", est);
+
+        if population[0].error < best_error {
+            best_error = population[0].error;
+            best_genome = population[0].genome.to_vec();
         }
-        
+           
+        let mut total = 0.0;
+        for datum in op.test_dataset.iter() {
+            let input = &datum.0;
+            let output = &datum.1;
+            let est = evaluate(&population[0], input, &mut layers);
+            total += vec_diff(&est, output);
+        }
+        total = total / (op.test_dataset.len() as f64);      
+        println!("(min_e, test_e) = ({}, {})", total, population[0].error);
+
+        breed_population(&mut population);
+
         for i in 0..op.population_size {
             mutate_genome(&mut population[i], rng);
         }
     }
 
     return Model { evaluate: evaluate,
-                   agent: Agent { genome: population[0].genome.to_vec(),
-                                  error: population[0].error },
+                   agent: Agent { genome: best_genome,
+                                  error: best_error },
                       op: op }
 }
