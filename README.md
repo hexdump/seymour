@@ -1,8 +1,10 @@
+<img src="logo.eps" alt="lol" style="zoom:33%;" align="left" />
+
 # seymour
 
 *Feed me training data, Seymour!*
 
-A genetic algorithm-based, non-standard neural network solver library.
+A genetic algorithm-based, non-standard neural network solver library. [logo.eps](logo.eps) 
 
 
 # Getting Started
