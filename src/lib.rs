@@ -125,9 +125,12 @@ pub fn net_evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>
             }
 
             current[j] = manifold(&agent.genome[g..g+last.len()], last[n0..n1].to_vec());
+            if agent.genome[g+last.len()] < 0.0 {
+                current[j] = 0.0;
+            }
             last.insert(j, current[j]);
         }
-        g += last.len();
+        g += last.len() + 1;
 
         last.truncate(current.len());
     }
@@ -219,11 +222,14 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
         iterations: iterations
     };
 
+    println!("{:?}", layer_sizes);
+
     let mut best_genome: Vec<f64> = Vec::new();
     let mut best_error: f64 = std::f64::INFINITY;
     
     for i in 0..op.num_layers - 1 {
         op.genome_size += layer_sizes[i] * layer_sizes[i + 1];
+        op.genome_size += layer_sizes[i];
     }
     
     // intialize the space for data processing for each core.
@@ -329,6 +335,7 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
         }
         total = total / (op.test_dataset.len() as f64);      
         println!("(min_e, test_e) = ({}, {})", total, population[0].error);
+        println!("{:?}", population[0].genome);
 
         breed_population(&mut population);
 
