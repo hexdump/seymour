@@ -5,6 +5,8 @@ use fastapprox::fast::*;
 use std::f64::consts::PI;
 use std::cmp::Ordering;
 
+const MAX_SAMPLE_SIZE: usize = 250;
+
 struct OptimizerParameters {
     num_layers: usize,
     layer_sizes: Vec<usize>,
@@ -48,12 +50,7 @@ impl Model {
 }
 
 fn diff(x0: f64, x1: f64) -> f64 {
-    if (x0 == x1) && (x1 == 0.0) {
-        return 0.0;
-    }
-    else {
-        return (2.0 * (x0 - x1) / (x0 + x1)).abs();
-    }
+    return 2.0 * (x0 - x1).abs() / (x0 + x1).abs();
 }
 
 fn vec_diff(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {  
@@ -64,20 +61,23 @@ fn vec_diff(v0: &Vec<f64>, v1: &Vec<f64>) -> f64 {
     }
 
     total *= 1.0 + (v0.len() as f64 - v1.len() as f64) / (v0.len().max(v1.len()) as f64);
-
     
     return total / (v0.len() as f64);
 }
 
 fn update_error(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, agent: &mut Agent, layers: &mut Vec<Vec<f64>>, op: &OptimizerParameters) {
     let mut total: f64 = 0.0;
-    for datum in op.dataset[..100].iter() {
+    let mut sample_size: usize = op.dataset.len();
+    if sample_size > MAX_SAMPLE_SIZE {
+        sample_size = MAX_SAMPLE_SIZE;
+    }
+    for datum in op.dataset[..sample_size].iter() {
         let input = &datum.0;
         let output = &datum.1;
         let est = evaluate(&agent, input, layers);
         total += vec_diff(&est, output);
     }
-    total = total / (op.dataset[..100].len() as f64);
+    total = total / (op.dataset[..sample_size].len() as f64);
     agent.error = total;
 }
 
@@ -85,18 +85,19 @@ fn sigmoid(x: f64) -> f64 {
     return 1.0 / (1.0 + (-x).exp());
 }
 
+
 pub fn manifold(genes: &[f64], inputs: Vec<f64>) -> f64 {
     let mut total = 0.0;
     for i in 0..inputs.len() {
         let x = inputs[i];
-        total += genes[i].mul_add(x,
-                                  x.sin());
+        total += (genes[i] * x).sin() + (x * genes[i] + x).cos();
     }
-    return sigmoid(total); // / (inputs.len() as f64);
+    return total / inputs.len() as f64;
 }
 
-
-pub fn net_evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>) -> Vec<f64>{
+pub fn net_evaluate (agent: &Agent,
+                     input: &Vec<f64>,
+                     layers: &mut Vec<Vec<f64>>) -> Vec<f64>{
 
     let mut g = 0;
     let mut last: Vec<f64> = Vec::new();
@@ -108,38 +109,17 @@ pub fn net_evaluate (agent: &Agent, input: &Vec<f64>, layers: &mut Vec<Vec<f64>>
     }
 
     for i in 1..layers.len() {
+        // for each layer
         let current = &mut layers[i]; 
-        
-        for j in 0..current.len() {
-            let mut n: usize = 0;
-            n = 5;
-            
-            let mut n0 = 0; 
-            if n <= j {
-                n0 = j - n; // overflows since it's a usize, so we check
-            }
-
-            let mut n1 = j + n;
-            if n1 > last.len() {
-                n1 = last.len();
-            }
-
-            current[j] = manifold(&agent.genome[g..g+last.len()], last[n0..n1].to_vec());
-            if agent.genome[g+last.len()] < 0.0 {
-                current[j] = 0.0;
-            }
-            last.insert(j, current[j]);
+        for j in 0..current.len() {            
+            let len_last = last.len();
+            current[j] = manifold(&agent.genome[g..g+len_last], last.to_vec());
+            g += len_last;
         }
-        g += last.len() + 1;
-
-        last.truncate(current.len());
+        last = current.to_vec();
     }
 
-    let mut output = Vec::new();
-    for val in layers[layers.len() - 1].iter() {
-        output.push(*val);
-    }
-    return output;
+    return last.to_vec(); //output;
 }
 
 fn compare_floats(a: f64, b: f64, decimal_places: u8) -> Ordering {
@@ -208,14 +188,19 @@ fn breed_population(population: &mut Vec<Agent>) {
     }
 }
 
-pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, layer_sizes: Vec<usize>, dataset: &Vec<(Vec<f64>, Vec<f64>)>, test_dataset: &Vec<(Vec<f64>, Vec<f64>)>, iterations: usize) -> Model {
+ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>,
+              layer_sizes: Vec<usize>,
+              dataset: &Vec<(Vec<f64>, Vec<f64>)>,
+              test_dataset: &Vec<(Vec<f64>, Vec<f64>)>,
+              population_size: usize,
+              iterations: usize) -> Model {
     
     let mut op = OptimizerParameters {
         num_layers: layer_sizes.len(),
         layer_sizes: layer_sizes.to_vec(),
         input_size: layer_sizes[0],
         output_size: layer_sizes[layer_sizes.len() - 1],
-        population_size: 1000,
+        population_size: population_size,
         genome_size: 0,
         dataset: dataset.to_vec(),
         test_dataset: test_dataset.to_vec(),
@@ -229,7 +214,6 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
     
     for i in 0..op.num_layers - 1 {
         op.genome_size += layer_sizes[i] * layer_sizes[i + 1];
-        op.genome_size += layer_sizes[i];
     }
     
     // intialize the space for data processing for each core.
@@ -253,7 +237,23 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
     for layer_size in op.layer_sizes.iter() {
         layers3.push(vec![0.0; *layer_size]);
     }
-
+    let mut layers4: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers4.push(vec![0.0; *layer_size]);
+    }
+    let mut layers5: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers5.push(vec![0.0; *layer_size]);
+    }
+    let mut layers6: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers6.push(vec![0.0; *layer_size]);
+    }
+    let mut layers7: Vec<Vec<f64>> = Vec::new();
+    for layer_size in op.layer_sizes.iter() {
+        layers7.push(vec![0.0; *layer_size]);
+    }
+     
     let mut rng: ThreadRng = thread_rng();
 
     // note that this will initialize these arrays INDEPENDENTLY
@@ -266,51 +266,82 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
                                 error: 0.0 });
         let agent = &mut population[i];
         for j in 0..op.genome_size {
-            agent.genome[j] = rng.gen::<f64>();
+            agent.genome[j] = rng.gen::<f64>() * 2.0;
         }
     }
 
     for ip in 0..op.iterations {
 
+        op.dataset.shuffle(&mut rng);
+        
         let population_len = population.len();
         let (mut slice_left, mut slice_right) = population.split_at_mut(population_len / 2);
+
+        // 
         
         let slice_left_len = slice_left.len();
-        let (mut slice0, mut slice1) = slice_left.split_at_mut(slice_left_len / 2);
+        let (mut slice_left_left, mut slice_left_right) = slice_left.split_at_mut(slice_left_len / 2);
 
         let slice_right_len = slice_right.len();
-        let (mut slice2, mut slice3) = slice_right.split_at_mut(slice_right_len / 2);
+        let (mut slice_right_left, mut slice_right_right) = slice_right.split_at_mut(slice_right_len / 2);
+
+        // 
         
-        join(
-            ||  {
-                join(
-                    || {
-                        for mut agent in slice0 {
-                            update_error(evaluate, &mut agent, &mut layers0, &op);
-                        }
-                    },
-                    || {
-                        for mut agent in slice1 {
-                            update_error(evaluate, &mut agent, &mut layers1, &op);
-                        }
-                    },
-                )
-            },
-            || {
-                join(
-                    || {
-                        for mut agent in slice2 {
-                            update_error(evaluate, &mut agent, &mut layers2, &op);
-                        }                 
-                    },
-                    || {
-                        for mut agent in slice3 {
-                            update_error(evaluate, &mut agent, &mut layers3, &op);
-                        }                
-                    }
-                )
-            }
-        );
+        let slice_left_left_len = slice_left_left.len();
+        let (mut slice0, mut slice1) = slice_left_left.split_at_mut(slice_left_left_len / 2);
+
+        let slice_left_right_len = slice_left_right.len();
+        let (mut slice2, mut slice3) = slice_left_right.split_at_mut(slice_left_right_len / 2);
+
+        let slice_right_left_len = slice_right_left.len();
+        let (mut slice4, mut slice5) = slice_right_left.split_at_mut(slice_right_left_len / 2);
+
+        let slice_right_right_len = slice_right_right.len();
+        let (mut slice6, mut slice7) = slice_right_right.split_at_mut(slice_right_right_len / 2);
+        
+
+        rayon::scope(|s| {
+            s.spawn(|s| {
+                for mut agent in slice0 {
+                    update_error(evaluate, &mut agent, &mut layers0, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice1 {
+                    update_error(evaluate, &mut agent, &mut layers1, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice2 {
+                    update_error(evaluate, &mut agent, &mut layers2, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice3 {
+                    update_error(evaluate, &mut agent, &mut layers3, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice4 {
+                    update_error(evaluate, &mut agent, &mut layers4, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice5 {
+                    update_error(evaluate, &mut agent, &mut layers5, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice6 {
+                    update_error(evaluate, &mut agent, &mut layers6, &op);
+                }
+            });
+            s.spawn(|s| {
+                for mut agent in slice7 {
+                    update_error(evaluate, &mut agent, &mut layers7, &op);
+                }
+            });
+        });
 
         population.sort_by(|a, b| compare_floats(a.error, b.error, 10));
 
@@ -331,13 +362,12 @@ pub fn solve(evaluate: fn(&Agent, &Vec<f64>, &mut Vec<Vec<f64>>) -> Vec<f64>, la
             let input = &datum.0;
             let output = &datum.1;
             let est = evaluate(&population[0], input, &mut layers);
+            println!("{:?}", est);
             total += vec_diff(&est, output);
         }
-        total = total / (op.test_dataset.len() as f64);      
+        total = total / (op.test_dataset.len() as f64);
+        let best_agent = &population[0];
         println!("(min_e, test_e) = ({}, {})", total, population[0].error);
-        println!("{:?}", population[0].genome);
-
-        breed_population(&mut population);
 
         for i in 0..op.population_size {
             mutate_genome(&mut population[i], rng);
