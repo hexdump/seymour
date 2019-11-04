@@ -1,4 +1,4 @@
-<img src="logo.png" alt="Cartoon picture of a venus fly trap." width="200px" align="left" />
+<img src="logo.png" alt="Cartoon picture of a venus fly trap." width="250px" align="left" />
 
 # seymour
 
@@ -31,3 +31,22 @@ fn main() {
     println!("[result]: {:?}", model.apply(&vec![0.0, 0.0]))
 }         
 ```
+
+# Algorithm
+
+## Constants
+
+```
+const GENE_INITIALIZATION_SD: f64 = 2.0;
+const 
+```
+
+## General Algorithm Implementation
+
+
+
+### Initialization
+
+## 
+
+## Network Implementation

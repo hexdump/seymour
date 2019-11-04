@@ -5,6 +5,9 @@ use fastapprox::fast::*;
 use std::f64::consts::PI;
 use std::cmp::Ordering;
 
+// hyperteparameters
+const GENE_INITIALIZATION_SD: 2.0;
+
 const MAX_SAMPLE_SIZE: usize = 250;
 
 struct OptimizerParameters {
@@ -266,7 +269,7 @@ fn breed_population(population: &mut Vec<Agent>) {
                                 error: 0.0 });
         let agent = &mut population[i];
         for j in 0..op.genome_size {
-            agent.genome[j] = rng.gen::<f64>() * 2.0;
+            agent.genome[j] = rng.gen::<f64>() * GENE_INITIALIZATION_SD;
         }
     }
 
