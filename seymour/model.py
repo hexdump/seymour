@@ -10,29 +10,38 @@
 import copy
 
 class Model(object):
-     def __init__(self):
+
+    error = 0
+    
+    def __init__(self):
          """
          initialize a model with a random set of instance variables.
          """
-         
          pass
-
-     def copy_self(self):
+    
+    def copy_self(self):
          """
          returns a deep copy of this instance of the Model.
          """
          return copy.deepcopy(self)
-         
-     
-     def reproduce(self):
+
+    def mutate(self):
          """
          (should be defined by implementations of Model)
+         mutates this instantation of Model.
+         """
+         raise NotImplementedError('.mutate() not implemented')
+
+    def reproduce(self):
+         """
          returns a new instance of this Model with a mutated instance.
          """
-         
-         raise NotImplementedError('.reproduce() not implemented')
 
-     def evaluate(self, i):
+         child = self.copy_self()
+         child.mutate()
+         return child
+
+    def evaluate(self, i):
          """
          (should be defined by implementations of Model)
          returns the Model output for the given input `i`.
