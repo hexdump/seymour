@@ -32,13 +32,13 @@ class Model(object):
          """
          raise NotImplementedError('.mutate() not implemented')
 
-    def reproduce(self):
+    def reproduce(self, alpha):
          """
          returns a new instance of this Model with a mutated instance.
          """
 
          child = self.copy_self()
-         child.mutate()
+         child.mutate(alpha)
          return child
 
     def evaluate(self, i):

@@ -1,7 +1,7 @@
 import json
 from utils import boolean_to_float
-from graph import FixedSizeGraph
-from optimizer import Optimizer
+from seymour.graph import FixedSizeGraph
+from seymour.optimizer import Optimizer
 
 class SimpleFixedSizeGraphTest(FixedSizeGraph):
     prob_flip = 0.01
@@ -16,13 +16,11 @@ class SimpleFixedSizeGraphTest(FixedSizeGraph):
     # relation R is a grid where x * y is the truth value of x R y.
     relations = None
 
-
 def parent_child(parent, child):
     def inner(graph):
         return boolean_to_float((parent in graph[child]['is_child_of']) and (child in graph[parent]['is_parent_of']))
     return inner
-    
-    
+
 dataset = [
     [parent_child('a', 'b'), 1],
     [parent_child('b', 'c'), 1],
@@ -35,8 +33,7 @@ dataset = [
     
     [parent_child('b', 'a'), 0],
     [parent_child('c', 'b'), 0],
-    [parent_child('d', 'c'), 0],
-    
+    [parent_child('d', 'c'), 0],    
 ]
     
 g = SimpleFixedSizeGraphTest()
