@@ -41,9 +41,20 @@ class Model(object):
          child.mutate(alpha)
          return child
 
-    def evaluate(self, i):
+    def update_error(self, i):
          """
          (should be defined by implementations of Model)
-         returns the Model output for the given input `i`.
+         updates the .error attribute to the current
+         error of the model (inverse performance,
+         0 is maximum possible performance, while a high
+         number is low performance).
          """
-         raise NotImplementedError('.evaluate() not implemented')
+         raise NotImplementedError('.error() not implemented.')
+
+    def evaluate(self, i):
+        """
+        (should be defined by implementations of Model)
+        returns the model's output for the given input `i`.
+        """
+        raise NotImplementedError('.evaluate() not implemented.')
+        

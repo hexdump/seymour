@@ -10,7 +10,7 @@
 import numpy as np
 from numpy import dot
 from scipy.special import expit
-from seymour import Model
+from seymour import SupervisedModel
 import sympy
 from seymour.utils import random_boolean, breed_booleans, mutate_boolean, probability
 
@@ -19,7 +19,7 @@ sympy.init_printing()
 def random(shape=()):
     return np.random.random(shape) * 2 - 1
     
-class FullyConnectedNet(Model):
+class FullyConnectedNet(SupervisedModel):
 
     weights = []
     biases = []
@@ -79,7 +79,7 @@ class FullyConnectedNet(Model):
         for weight, bias in zip(self.weights, self.biases):
             i = expit(dot(i, weight) + bias * self.hp_bias_coeff)
         return i
-
+    
     def display(self):
         for weight in self.weights:
             sympy.pprint(sympy.Matrix(weight))
