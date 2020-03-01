@@ -7,23 +7,23 @@
 # Copyright (C) 2019, Liam Schumm
 #
 
-import random
+import random as rd
 import numpy as np
 
 def random_boolean():
-    return random.choice([True, False])
+    return rd.choice([True, False])
 
 def breed_booleans(this, that):
-    return random.choice([this, that])
+    return rd.choice([this, that])
 
 def mutate_boolean(this, prob_flip):
-    return not this if random.random() < prob_flip else this
+    return not this if rd.random() < prob_flip else this
 
 def boolean_to_float(boolean):
     return 1.0 if boolean else 0.0
 
 def probability(p):
-    return random.random() < p
+    return rd.random() < p
 
 array = np.asarray
 
@@ -41,3 +41,8 @@ def tensor_difference(tensor_a, tensor_b):
     error += size_difference
     
     return error
+
+
+def random(shape=()):
+    return np.random.random(shape) * 2 - 1
+

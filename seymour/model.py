@@ -25,7 +25,7 @@ class Model(object):
          """
          return copy.deepcopy(self)
 
-    def mutate(self):
+    def mutate(self, alpha):
          """
          (should be defined by implementations of Model)
          mutates this instantation of Model.

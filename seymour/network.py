@@ -7,40 +7,36 @@
 # Copyright (C) 2019, Liam Schumm
 #
 
+from numba import jit
 import numpy as np
 from numpy import dot
 from scipy.special import expit
 from seymour import SupervisedModel
 import sympy
-from seymour.utils import random_boolean, breed_booleans, mutate_boolean, probability
+from seymour.utils import random_boolean, breed_booleans, mutate_boolean, probability, random
 
 sympy.init_printing()
 
-def random(shape=()):
-    return np.random.random(shape) * 2 - 1
-    
 class FullyConnectedNet(SupervisedModel):
 
     weights = []
     biases = []
-
-    input_size  = 1
-    output_size = 1
 
     # hyperparameters
     hp_prob_split = 0.05
     hp_prob_join  = 0.0
     hp_prob_mut = 0.5
     hp_bias_coeff = 0.1
-    
-    def __init__(self):        
+
+    def __init__(self, input_size=1, output_size=1):
+        self.input_size = input_size
+        self.output_size = output_size
+        
         self.weights = [random((self.input_size, self.input_size)),
-                        random((self.input_size, self.input_size)),
                         random((self.input_size, self.output_size))]
         self.biases = [random(self.input_size),
-                       random(self.input_size),
                        random(self.output_size)]
-        
+
     def mutate(self, alpha):
         i = 0
         while i < len(self.weights):
@@ -69,7 +65,7 @@ class FullyConnectedNet(SupervisedModel):
                 self.biases = self.biases[:i] + [self.biases[i + 1]] + self.biases[i + 2:]
             
             i += 1
-            
+
     def evaluate(self, i):
         """
         takes in a user function as an input that operates on the nicely structured

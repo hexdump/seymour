@@ -1,3 +1,5 @@
+import time
+from numba import jit
 from seymour.utils import tensor_difference
 
 class Optimizer(object):
@@ -8,6 +10,8 @@ class Optimizer(object):
         self.population = [self.model() for _ in range(population_size)]
         
         for _ in range(epochs):
+            start_time = time.time()
+            
             children_population = [agent.reproduce(alpha) for agent in self.population]
 
             self.population = self.population + children_population
@@ -21,6 +25,8 @@ class Optimizer(object):
             print()
             print("⏰  epoch: " + str(_))
             print("💪  min error: " + str(self.population[0].error))
+            elapsed_time = time.time() - start_time
+            print(" elapsed time: " + str(elapsed_time))
 
         return self.population[0]
                     
