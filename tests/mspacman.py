@@ -6,6 +6,9 @@ from seymour.utils import array, random
 import numpy as np
 from scipy.signal import convolve2d
 from skimage.color import rgb2gray
+from skimage.transform import resize
+
+import scipy.misc
 
 import gym
 import time
@@ -13,9 +16,9 @@ import time
 class MsPacman(Model):
 
     def __init__(self):
-        self.net = FullyConnectedNet(228, 8 + 10)
-#        self.kernel1 = random((50, 50))
-#        self.kernel2 = random((50, 50))
+        self.net = FullyConnectedNet(3944, 8 + 10)
+        self.kernel1 = random((20, 20))
+        self.kernel2 = random((20, 20))
 
     def mutate(self, alpha):
         self.net.mutate(alpha)
@@ -27,7 +30,10 @@ class MsPacman(Model):
     def display(self, display=True):
         fitness = 0
 
-        env = gym.make('MsPacman-ram-v0')
+        env = gym.make('MsPacman-v0')
+
+        env.env.ale.saveScreenPNG(b'test_image.png')
+
         
         observation = env.reset()
         state = np.zeros(10)
@@ -48,14 +54,12 @@ class MsPacman(Model):
             # determine action
             #
 
-            # greyscalify and convolve observation, and flatten
-#            observation = rgb2gray(observation)
-            # (210, 160) -> (161, 111)
-#            observation = convolve2d(observation, self.kernel1, mode='valid')
-            # (161, 111) -> (112, 62)
-#            observation = convolve2d(observation, self.kernel2, mode='valid')
-            # (112, 62) -> (6944,)
-            
+            # greyscalify
+            observation = rgb2gray(observation)
+            observation = observation[1:168,]
+            observation = resize(observation, (100, 100))
+            observation = convolve2d(observation, self.kernel1, mode='valid')
+            observation = convolve2d(observation, self.kernel2, mode='valid')
             observation = observation.flatten()
             
             # put together observation with reward and state. end with an array
@@ -63,7 +67,7 @@ class MsPacman(Model):
             reward_and_state = array([reward]) + state
             for i in range(10):
                 observation = np.concatenate([observation, reward_and_state])
-                
+            
             # evaluate through network
             result = self.net.evaluate(observation)
 
@@ -80,7 +84,7 @@ class MsPacman(Model):
         self.error = 1 / fitness
 
 o = Optimizer(model = MsPacman)
-m = o.optimize(1, 1, 1)
+m = o.optimize(100, 100, 1)
 
 import pickle
 with open('model', 'wb') as f:
