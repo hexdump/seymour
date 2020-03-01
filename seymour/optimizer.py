@@ -23,10 +23,10 @@ class Optimizer(object):
             self.population = self.population[:int(len(self.population) / 2)]
 
             print()
-            print("⏰  epoch: " + str(_))
+            print("📆  epoch: " + str(_))
             print("💪  min error: " + str(self.population[0].error))
             elapsed_time = time.time() - start_time
-            print(" elapsed time: " + str(elapsed_time))
+            print("⏰ elapsed time: " + str(elapsed_time))
 
         return self.population[0]
                     
