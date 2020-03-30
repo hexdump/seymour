@@ -16,7 +16,7 @@ import time
 class MsPacman(Model):
 
     def __init__(self):
-        self.net = FullyConnectedNet(3944, 8 + 10)
+        self.net = FullyConnectedNet(1024, 8 + 10)
         self.kernel1 = random((20, 20))
         self.kernel2 = random((20, 20))
 
@@ -30,19 +30,22 @@ class MsPacman(Model):
     def display(self, display=True):
         fitness = 0
 
-        env = gym.make('MsPacman-v0')
+        env = gym.make('MsPacman-ram-v0')
 
         env.env.ale.saveScreenPNG(b'test_image.png')
 
-        
         observation = env.reset()
         state = np.zeros(10)
         reward = 0
         done = False
 
         max_position = 0
-        
-        for i in range(500):
+
+        for i in range(90):
+            observation, reward, done, info = env.step(0)
+
+        i = 0
+        while ((i < 200) or display) and not done:            
             fitness += reward
 
             # render the environment on the screen
@@ -81,10 +84,13 @@ class MsPacman(Model):
             # iterate
             observation, reward, done, info = env.step(action)
 
+            # increment round index
+            i += 1
+            
         self.error = 1 / fitness
 
 o = Optimizer(model = MsPacman)
-m = o.optimize(100, 100, 1)
+m = o.optimize(10, 100, 1)
 
 import pickle
 with open('model', 'wb') as f:
