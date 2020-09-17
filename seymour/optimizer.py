@@ -6,9 +6,9 @@ class Optimizer(object):
     def __init__(self, model):
         self.model = model
 
-    def optimize(self, population_size, epochs, alpha):
+    def optimize(self, init_args, population_size, epochs, alpha):
         print('initializing population...')
-        self.population = [self.model() for _ in range(population_size)]
+        self.population = [self.model(*init_args) for _ in range(population_size)]
 
         try:
             for _ in range(epochs):

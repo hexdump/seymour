@@ -17,7 +17,7 @@ from seymour.utils import random_boolean, breed_booleans, mutate_boolean, probab
 
 sympy.init_printing()
 
-class FullyConnectedNet(SupervisedModel):
+class FullyConnectedNet():
 
     weights = []
     biases = []
@@ -41,9 +41,9 @@ class FullyConnectedNet(SupervisedModel):
         i = 0
         while i < len(self.weights):
             if probability(self.hp_prob_mut):
-                weight_delta = random(self.weights[i].shape) * self.error * alpha
+                weight_delta = random(self.weights[i].shape) * alpha
                 self.weights[i] += weight_delta
-                bias_delta = random(self.biases[i].shape) * self.error * alpha
+                bias_delta = random(self.biases[i].shape) * alpha
                 self.biases[i] += bias_delta
                 
             if probability(self.hp_prob_split):
@@ -75,10 +75,3 @@ class FullyConnectedNet(SupervisedModel):
         for weight, bias in zip(self.weights, self.biases):
             i = expit(dot(i, weight) + bias * self.hp_bias_coeff)
         return i
-    
-    def display(self):
-        for weight in self.weights:
-            sympy.pprint(sympy.Matrix(weight))
-
-        for bias in self.biases:
-            sympy.pprint(sympy.Matrix(bias))
