@@ -2,6 +2,9 @@ import time
 from numba import jit
 from seymour.utils import tensor_difference
 
+import dill
+from pathos.multiprocessing import Pool
+
 class Optimizer(object):
     def __init__(self, model):
         self.model = model
@@ -20,6 +23,10 @@ class Optimizer(object):
     
                 for agent in self.population:
                     agent.update_error()
+
+                pool = Pool(4)
+                pool.map(lambda x: x.update_error(), self.population)
+                pool.close()
                     
                 self.population.sort(key=lambda agent: agent.error)
                 self.population = self.population[:int(len(self.population) / 2)]
