@@ -44,6 +44,7 @@ class Optimizer(object):
                 self.min_errors.append(min_error)
                 self.max_errors.append(max_error)
                 self.median_errors.append(median_error)
+                self.population[0].display()
                 
                 # now, let's reevaluate our current best (if we have one)
                 if self.best_agent is not None:
@@ -52,7 +53,7 @@ class Optimizer(object):
                         self.best_agent = self.population[0].reproduce_asexually()
                 else:
                     self.best_agent = self.population[0].reproduce_asexually()
-                
+                    
                 # pick best ones as parents
                 parents = self.population[:int(population_size / 2)]
 
@@ -67,7 +68,6 @@ class Optimizer(object):
                     child.mutate(alpha)
     
                 self.population = children
-                self.population[0].display()
                 
         except KeyboardInterrupt:
             pass
