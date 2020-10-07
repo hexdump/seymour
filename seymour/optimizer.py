@@ -50,6 +50,8 @@ class Optimizer(object):
                     self.best_agent.update_error()
                     if self.best_agent.error > self.population[0].error:
                         self.best_agent = self.population[0].reproduce_asexually()
+                else:
+                    self.best_agent = self.population[0].reproduce_asexually()
                 
                 # pick best ones as parents
                 parents = self.population[:int(population_size / 2)]
@@ -70,7 +72,7 @@ class Optimizer(object):
         except KeyboardInterrupt:
             pass
 
-        return self.population[0]
+        return self.best_agent
                     
 
             
