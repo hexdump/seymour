@@ -8,6 +8,7 @@
 #
 
 import time
+from statistics import median
 
 class Optimizer(object):
     def __init__(self, model):
@@ -16,7 +17,7 @@ class Optimizer(object):
         
         self.max_errors = []
         self.min_errors = []
-        self.mean_errors = []
+        self.median_errors = []
 
         self.best_agent = None
 
@@ -27,36 +28,45 @@ class Optimizer(object):
 
         try:
             for _ in range(epochs):
-                start_time = time.time()
-                
-                children_population = [agent.reproduce(alpha) for agent in self.population * 2]
-    
-                self.population = children_population
-    
+                # sort agents by error
                 for agent in self.population:
                     agent.update_error()
-	
-                self.population.sort(key=lambda agent: agent.error)
-                self.population = self.population[:int(len(self.population) / 2)]
-    
-                print()
-                print("epoch: " + str(_))
-                print("min error: " + str(self.population[0].error))
+                self.population.sort(key = lambda agent: agent.error)
 
-                # now, let's reevaluate our current best
-                if self.best_agent:
+                # print and record statistics about the population
+                print("epoch: " + str(_))
+                min_error = self.population[0].error
+                max_error = self.population[-1].error
+                median_error = median(agent.error for agent in self.population)
+                print(f"min error: {min_error}")
+                print(f"max error: {max_error}")
+                print(f"median error: {median_error}")
+                self.min_errors.append(min_error)
+                self.max_errors.append(max_error)
+                self.median_errors.append(median_error)
+                
+                # now, let's reevaluate our current best (if we have one)
+                if self.best_agent is not None:
                     self.best_agent.update_error()
                     if self.best_agent.error > self.population[0].error:
-                        self.best_agent = self.population[0].reproduce_asexual()
+                        self.best_agent = self.population[0].reproduce_asexually()
                 
-                self.min_errors.append(self.population[0].error)
-                self.max_errors.append(self.population[-1].error)
-                self.mean_errors.append(sum(agent.error for agent in self.population) / len(self.population))
-                
-                elapsed_time = time.time() - start_time
-                print("elapsed time: " + str(elapsed_time))
+                # pick best ones as parents
+                parents = self.population[:int(population_size / 2)]
+
+                # breed
+                children = []
+                for i in range(0, len(parents), 2):
+                    children.append(parents[i].reproduce_sexually(parents[i + 1]))
+                    children.append(parents[i + 1].reproduce_sexually(parents[i]))
+
+                # mutate children
+                for child in children:
+                    child.mutate(alpha)
     
+                self.population = children
                 self.population[0].display()
+                
         except KeyboardInterrupt:
             pass
 

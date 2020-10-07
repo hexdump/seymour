@@ -11,7 +11,7 @@ import copy
 
 class Model(object):
 
-    error = 0
+    error = None
     
     def __init__(self):
          """
@@ -32,7 +32,7 @@ class Model(object):
          """
          raise NotImplementedError('.mutate() not implemented')
 
-    def reproduce_asexual(self):
+    def reproduce_asexually(self):
          """
          returns a new instance of this Model with a mutated instance.
          """
@@ -40,26 +40,34 @@ class Model(object):
          child = self.copy_self()
          return child
 
-    def reproduce_sexual(self, other):
+    def reproduce_sexually(self, other):
         """
         returns a new instance of a Model with a genome that is a
         combination between two models.
         """
-        raise NotImplementedError(".reproduce_sexual() not implemented.")
+        raise NotImplementedError(".reproduce_sexually() not implemented.")
 
     def update_error(self, i):
-         """
-         (should be defined by implementations of Model)
-         updates the .error attribute to the current
-         error of the model (inverse performance,
-         0 is maximum possible performance, while a high
-         number is low performance).
-         """
-         raise NotImplementedError('.error() not implemented.')
-
+        """
+        (should be defined by implementations of Model)
+        updates the .error attribute to the current
+        error of the model (inverse performance,
+        0 is maximum possible performance, while a high
+        number is low performance).
+        """
+        raise NotImplementedError('.error() not implemented.')
+    
     def evaluate(self, i):
         """
         (should be defined by implementations of Model)
         returns the model's output for the given input `i`.
         """
         raise NotImplementedError('.evaluate() not implemented.')
+    
+    def display(self):
+        """
+        (should be defined by implementations of Model)
+        shows a glimpse of what this agent's parameters are like.
+        """
+        raise NotImplementedError('.display() not implemented.')
+        

@@ -16,11 +16,18 @@ def random_boolean():
 def breed_booleans(this, that):
     return rd.choice([this, that])
 
+def breed_lists(l1, l2):
+    assert len(l1) == len(l2)
+    return [(l1[i] if i % 2 == 0 else l2[i]) for i in range(len(l1))]
+
 def mutate_boolean(this, prob_flip):
     return not this if rd.random() < prob_flip else this
 
 def boolean_to_float(boolean):
     return 1.0 if boolean else 0.0
+
+def mutate_float(x, sd):
+    return np.random.normal(x, sd)
 
 def probability(p):
     return rd.random() < p
