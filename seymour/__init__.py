@@ -1,2 +1,4 @@
+#!/usr/bin/env python3
+
 from .model import Model
-from .supervised_model import SupervisedModel
+from .optimizer import Optimizer

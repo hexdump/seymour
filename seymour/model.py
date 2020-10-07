@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 #
-# [model.py]
+# [seymour/model.py]
 #
 # Model interface definition.
-# Copyright (C) 2019, Liam Schumm
+# Copyright (C) 2019-2020, Leslie Schumm
 #
 
 import copy
@@ -32,14 +32,20 @@ class Model(object):
          """
          raise NotImplementedError('.mutate() not implemented')
 
-    def reproduce(self, alpha):
+    def reproduce_asexual(self):
          """
          returns a new instance of this Model with a mutated instance.
          """
 
          child = self.copy_self()
-         child.mutate(alpha)
          return child
+
+    def reproduce_sexual(self, other):
+        """
+        returns a new instance of a Model with a genome that is a
+        combination between two models.
+        """
+        raise NotImplementedError(".reproduce_sexual() not implemented.")
 
     def update_error(self, i):
          """
@@ -57,4 +63,3 @@ class Model(object):
         returns the model's output for the given input `i`.
         """
         raise NotImplementedError('.evaluate() not implemented.')
-        

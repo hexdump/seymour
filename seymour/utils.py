@@ -42,7 +42,6 @@ def tensor_difference(tensor_a, tensor_b):
     
     return error
 
-
 def random(shape=()):
     return np.random.random(shape) * 2 - 1
 
